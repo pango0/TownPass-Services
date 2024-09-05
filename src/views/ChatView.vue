@@ -12,7 +12,7 @@
                 </svg>
             </router-link>
         </header>
-        <div class="flex-grow overflow-y-auto p-4 space-y-4" ref="chatContainer">
+        <div class="flex-grow overflow-y-auto p-4 space-y-4 " ref="chatContainer">
             <div v-for="message in chatHistory" :key="message.id" class="p-3 rounded-lg"
                 :class="message.isUser ? 'bg-tiffany-blue text-white' : 'bg-gray-100'">
                 <p class="font-semibold">{{ message.isUser ? '你' : '人工智慧助理' }}:</p>
@@ -21,6 +21,13 @@
             </div>
         </div>
         <div class="p-4 bg-white border-t border-gray-200">
+            <div class="overflow-x-auto whitespace-nowrap mb-4">
+                <button v-for="query in commonQueries" :key="query" @click="sendCommonQuery(query)"
+                    class="inline-block px-3 py-1 mr-2 text-sm bg-white-200 text-gray-700 rounded-full border border-[#0abab5] hover:bg-gray-300 transition-colors">
+                    {{ query }}
+                </button>
+            </div>
+
             <div class="flex items-center">
                 <input v-model="userInput" @keyup.enter="sendMessage" :disabled="loading"
                     class="flex-grow h-10 px-4 border border-tiffany-blue rounded-l-lg focus:outline-none focus:ring-2 focus:ring-tiffany-blue"
@@ -50,6 +57,19 @@ import { getDistance } from './distance'
 import { googleSearch } from './search';
 let userLatitude: number | null = null;
 let userLongitude: number | null = null;
+
+const commonQueries = ref([
+    "附近有哪裡可以租YouBike？",
+    "附近有哪裡可以還YouBike？",
+    "最近的捷運站在哪裡？",
+    "台北市有哪些景點推薦？",
+    "今天天氣如何？"
+]);
+
+const sendCommonQuery = (query: string) => {
+    userInput.value = query;
+    sendMessage();
+};
 
 function initGeolocation(): Promise<void> {
     return new Promise((resolve, reject) => {
