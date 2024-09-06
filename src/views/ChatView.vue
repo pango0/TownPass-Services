@@ -279,11 +279,13 @@ const sendMessage = async () => {
 
     loading.value = true;
     chatHistory.value.push({ id: Date.now(), isUser: true, content: userInput.value });
+    const query = userInput.value;
+    userInput.value = '';
     await nextTick();
     scrollToBottom();
 
     try {
-        const result = await chat.sendMessage(userInput.value);
+        const result = await chat.sendMessage(query);
         const aiResponse = result.response;
         const text = aiResponse.text();
         const functionCalls = aiResponse.functionCalls();
@@ -353,7 +355,6 @@ const sendMessage = async () => {
         console.error('Error sending message:', error);
         chatHistory.value.push({ id: Date.now(), isUser: false, content: 'Sorry, an error occurred. Please try again.', locations: [] });
     } finally {
-        userInput.value = '';
         loading.value = false;
         await nextTick();
         scrollToBottom();
