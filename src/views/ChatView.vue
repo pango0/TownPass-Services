@@ -113,6 +113,7 @@ const chatContainer = ref<HTMLElement | null>(null);
 
 async function getWeather(): Promise<BotResponse> {// Replace with actual weather API URL
     try {
+        initGeolocation()
         return await fetchWeatherData();
     } catch (error) {
         console.error("Error fetching weather:", error);
@@ -124,6 +125,7 @@ async function getWeather(): Promise<BotResponse> {// Replace with actual weathe
 
 async function findRentableStation(): Promise<YouBikeDataWithDistance | null> {
     try {
+        initGeolocation()
         return await getNearestRentableStation();
     } catch (error) {
         console.error("Error finding nearest rentable station:", error);
@@ -133,6 +135,7 @@ async function findRentableStation(): Promise<YouBikeDataWithDistance | null> {
 
 async function findReturnableStation(): Promise<YouBikeDataWithDistance | null> {
     try {
+        initGeolocation()
         return await getNearestReturnableStation();
     } catch (error) {
         console.error("Error finding nearest returnable station:", error);
@@ -142,6 +145,7 @@ async function findReturnableStation(): Promise<YouBikeDataWithDistance | null> 
 
 async function findNearestMetroStation(): Promise<MetroDataWithDistance> {
     try {
+        initGeolocation()
         return await getNearestMetroStation();
     } catch (error) {
         console.error("Error finding nearest metro station:", error);
