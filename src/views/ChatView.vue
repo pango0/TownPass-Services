@@ -328,7 +328,7 @@ const sendMessage = async () => {
                             return {
                                 name: call.name,
                                 data: data,
-                                location: null
+                                locations: []
                             };
                         }
                     } else if (call.name === 'getPosition') {
@@ -336,7 +336,7 @@ const sendMessage = async () => {
                         return {
                             name: call.name,
                             data: data,
-                            location: null
+                            locations: []
                         }
                     } else {
                         console.log(call.args)
@@ -345,11 +345,13 @@ const sendMessage = async () => {
                         return {
                             name: call.name,
                             data: data,
-                            location: (data.latitude !== undefined && data.longitude !== undefined) ? {
-                                functionName: call.name,
-                                latitude: data.latitude,
-                                longitude: data.longitude,
-                            } : null,
+                            locations: data
+                                .map(item => (item.latitude !== undefined && item.longitude !== undefined) ? {
+                                    functionName: call.name,
+                                    latitude: item.latitude,
+                                    longitude: item.longitude,
+                                } : null)
+                                .filter(item => item !== null),
                         };
                     }
                 }
@@ -360,11 +362,11 @@ const sendMessage = async () => {
                 .filter((result): result is {
                     name: string;
                     data: any;
-                    location: {
+                    locations: Array<{
                         functionName: string;
                         latitude: number;
                         longitude: number;
-                    } | null
+                    }>
                 } => result !== null);
 
             console.log(validResults);
@@ -375,9 +377,7 @@ const sendMessage = async () => {
                     id: Date.now(),
                     isUser: false,
                     content: followUpResult.response.text(),
-                    locations: validResults
-                        .filter(res => res.location !== null)
-                        .map(res => res.location as { latitude: number; longitude: number }),
+                    locations: validResults.flatMap(res => res.locations),
                 });
             } else {
                 // console.log("no tools used")
