@@ -183,6 +183,15 @@ async function searchGoogle(query: string): Promise<any | null> {
         return null;
     }
 }
+
+async function getPosition(): Promise<{ latitude: number, longitude: number }> {
+    await initGeolocation();
+    return {
+        latitude: userLatitude,
+        longitude: userLongitude,
+    } as { latitude: number, longitude: number };
+}
+
 const functionDeclarations = [
     {
         name: "getWeather",
@@ -265,6 +274,10 @@ const functionDeclarations = [
             },
             required: ["query"]
         }
+    },
+    {
+        name: "getPosition",
+        description: "Tool to obtain user current position."
     }
 ];
 
@@ -275,6 +288,7 @@ const functions = {
     // findDistance
     searchGoogle,
     getWeather,
+    getPosition,
 };
 
 const genAI = new GoogleGenerativeAI(apiKey);
@@ -317,6 +331,13 @@ const sendMessage = async () => {
                                 location: null
                             };
                         }
+                    } else if (call.name === 'getPosition') {
+                        const data = await functions[call.name]();
+                        return {
+                            name: call.name,
+                            data: data,
+                            location: null
+                        }
                     } else {
                         console.log(call.args)
                         const data = await functions[call.name as keyof typeof functions](call.args['k']);
@@ -346,6 +367,7 @@ const sendMessage = async () => {
                     } | null
                 } => result !== null);
 
+            console.log(validResults);
 
             if (validResults.length > 0) {
                 const followUpResult = await chat.sendMessage(JSON.stringify(validResults));
