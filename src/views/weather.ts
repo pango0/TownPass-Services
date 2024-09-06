@@ -8,19 +8,26 @@ export interface WeatherForecast {
         }>;
     };
     records: {
-        datasetDescription: string;
-        location: Array<{
-            locationName: string;
-            weatherElement: Array<{
-                elementName: string;
-                time: Array<{
-                    startTime: string;
-                    endTime: string;
-                    parameter: {
-                        parameterName: string;
-                        parameterValue?: string;
-                        parameterUnit?: string;
-                    };
+        locations: Array<{
+            datasetDescription: string;
+            locationsName: string;
+            dataid: string;
+            location: Array<{
+                locationName: string;
+                geocode: string;
+                lat: string;
+                lon: string;
+                weatherElement: Array<{
+                    elementName: string;
+                    description: string;
+                    time: Array<{
+                        startTime: string;
+                        endTime: string;
+                        elementValue: Array<{
+                            value: string;
+                            measures: string;
+                        }>;
+                    }>;
                 }>;
             }>;
         }>;
@@ -35,7 +42,7 @@ export interface BotResponse {
 
 // Example function to fetch weather data and prepare a chatbot-friendly response
 export async function fetchWeatherData(): Promise<BotResponse> {
-    const url = 'https://opendata.cwa.gov.tw/api/v1/rest/datastore/F-C0032-001?Authorization=CWA-EC987A54-DB8B-4E1A-AD8E-C775D2258D57&locationName=%E8%87%BA%E5%8C%97%E5%B8%82&elementName='; // Replace with actual API endpoint
+    const url = 'https://opendata.cwa.gov.tw/api/v1/rest/datastore/F-D0047-061?Authorization=CWA-EC987A54-DB8B-4E1A-AD8E-C775D2258D57&locationName=%E5%A4%A7%E5%AE%89%E5%8D%80&elementName=WeatherDescription'; // Replace with actual API endpoint
 
     try {
         const response = await fetch(url);
@@ -47,23 +54,26 @@ export async function fetchWeatherData(): Promise<BotResponse> {
         const data: WeatherForecast = await response.json();
 
         // Process the weather data
-        const weatherDetails = data.records.location.map((location) => {
-            const locationName = location.locationName;
-            const weatherElement = location.weatherElement.find(
-                (element) => element.elementName === 'Wx'
-            );
-            const forecastTimes = weatherElement?.time.map((time) => {
-                const startTime = time.startTime;
-                const endTime = time.endTime;
-                const weatherCondition = time.parameter.parameterName;
+        const weatherDetails = data.records.locations.map((locationSet) => {
+            return locationSet.location.map((location) => {
+                const locationName = location.locationName;
+                const weatherElement = location.weatherElement.find(
+                    (element) => element.elementName === 'WeatherDescription'
+                );
 
-                return `From ${startTime} to ${endTime}, the weather in ${locationName} is expected to be ${weatherCondition}.`;
-            });
+                const forecastTimes = weatherElement?.time.map((time) => {
+                    const startTime = time.startTime;
+                    const endTime = time.endTime;
+                    const weatherDescription = time.elementValue[0].value;
 
-            return forecastTimes?.join('\n') || `No weather data available for ${locationName}.`;
-        });
+                    return `From ${startTime} to ${endTime}, the weather in ${locationName} is expected to be: ${weatherDescription}.`;
+                });
 
-        const responseMessage = weatherDetails.join('\n');
+                return forecastTimes?.join('\n') || `No weather data available for ${locationName}.`;
+            }).join('\n');
+        }).join('\n');
+
+        const responseMessage = weatherDetails;
 
         // Return structured data for the chatbot
         return {
@@ -77,4 +87,3 @@ export async function fetchWeatherData(): Promise<BotResponse> {
         };
     }
 }
-
