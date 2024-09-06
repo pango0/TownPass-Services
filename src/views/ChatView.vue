@@ -55,7 +55,7 @@ import { getNearestRentableStation, getNearestReturnableStation, YouBikeDataWith
 import { getNearestMetroStation, MetroDataWithDistance } from './metro';
 import { getDistance } from './distance'
 import { googleSearch } from './search';
-import { fetchWeatherData } from './weather';
+import { fetchWeatherData, WeatherForecast } from './weather';
 let userLatitude: number | null = null;
 let userLongitude: number | null = null;
 
@@ -95,7 +95,7 @@ const userInput = ref('');
 const chatHistory = ref<Array<{ id: number; isUser: boolean; content: string }>>([]);
 const loading = ref(false);
 const chatContainer = ref<HTMLElement | null>(null);
-    async function fetchWeatherData(locationName: string): Promise<BotResponse> {
+async function fetchWeatherData(locationName: string): Promise<BotResponse> {
     const locationWeatherUrls: { [key: string]: string } = {
 
         "大安區": 'https://opendata.cwa.gov.tw/api/v1/rest/datastore/F-D0047-061?Authorization=CWA-EC987A54-DB8B-4E1A-AD8E-C775D2258D57&locationName=%E5%A4%A7%E5%AE%89%E5%8D%80&elementName=WeatherDescription',
@@ -161,7 +161,7 @@ const chatContainer = ref<HTMLElement | null>(null);
 
 
 
-
+console.log(fetchWeatherData("大安區"))
 
 async function findRentableStation(): Promise<YouBikeDataWithDistance | null> {
     try {
@@ -215,9 +215,9 @@ const functionDeclarations = [
         parameters: {
             type: "object", 
             properties: {
-                dummy: {
+                query: {
                     type: "string",
-                    description: "This parameter is not used but is required by the API."
+                    description: "This query is the location where the user wants to know the weather about. Please note that it is in traditional chinese."
                 }
             }
         }
