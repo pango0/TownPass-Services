@@ -12,7 +12,7 @@
                 </svg>
             </router-link>
         </header>
-        <div class="flex-grow overflow-y-auto p-4 space-y-4 " ref="chatContainer">
+        <div class="flex-grow overflow-y-auto p-4 space-y-4" ref="chatContainer">
             <div v-for="message in chatHistory" :key="message.id" class="p-3 rounded-lg"
                 :class="message.isUser ? 'bg-tiffany-blue text-white' : 'bg-gray-100'">
                 <p class="font-semibold">{{ message.isUser ? '你' : '人工智慧助理' }}:</p>
@@ -27,13 +27,12 @@
                     {{ query }}
                 </button>
             </div>
-
             <div class="flex items-center">
                 <input v-model="userInput" @keyup.enter="sendMessage" :disabled="loading"
-                    class="flex-grow h-10 px-4 border border-tiffany-blue rounded-l-lg focus:outline-none focus:ring-2 focus:ring-tiffany-blue"
+                    class="flex-grow h-10 px-4 border border-tiffany-blue rounded-full focus:outline-none focus:ring-2 focus:ring-tiffany-blue"
                     placeholder="輸入你的問題" />
                 <button @click="sendMessage" :disabled="loading"
-                    class="bg-tiffany-blue text-white h-10 px-3 py-2 rounded-r-lg hover:bg-tiffany-blue-dark transition-colors flex items-center justify-center">
+                    class="ml-2 bg-tiffany-blue text-white h-10 w-10 rounded-full hover:bg-tiffany-blue-dark transition-colors flex items-center justify-center">
                     <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 transform rotate-90" viewBox="0 0 20 20"
                         fill="currentColor">
                         <path
@@ -41,6 +40,7 @@
                     </svg>
                 </button>
             </div>
+
             <p v-if="loading" class="mt-2 text-gray-600">Waiting for response...</p>
         </div>
     </div>
@@ -55,6 +55,7 @@ import { getNearestRentableStation, getNearestReturnableStation, YouBikeDataWith
 import { getNearestMetroStation, MetroDataWithDistance } from './metro';
 import { getDistance } from './distance'
 import { googleSearch } from './search';
+import { getWeather } from './weather';
 let userLatitude: number | null = null;
 let userLongitude: number | null = null;
 
@@ -65,7 +66,6 @@ const commonQueries = ref([
     "台北市有哪些景點推薦？",
     "今天天氣如何？"
 ]);
-
 const sendCommonQuery = (query: string) => {
     userInput.value = query;
     sendMessage();
@@ -95,6 +95,37 @@ const userInput = ref('');
 const chatHistory = ref<Array<{ id: number; isUser: boolean; content: string }>>([]);
 const loading = ref(false);
 const chatContainer = ref<HTMLElement | null>(null);
+
+async function getWeather(): Promise<BotResponse> {
+    const url = 'https://opendata.cwa.gov.tw/api/v1/rest/datastore/F-C0032-001?Authorization=CWA-EC987A54-DB8B-4E1A-AD8E-C775D2258D57&locationName=%E8%87%BA%E5%8C%97%E5%B8%82&elementName='; // Replace with actual weather API URL
+    try {
+        const response = await fetch(url);
+        if (!response.ok) {
+            throw new Error(`Error fetching weather data: ${response.statusText}`);
+        }
+        const data = await response.json();
+        const weatherDetails = data.records.location.map((location) => {
+            const weatherElement = location.weatherElement.find(
+                (element) => element.elementName === 'Wx'
+            );
+            const forecastTimes = weatherElement?.time.map((time) => {
+                return `From ${time.startTime} to ${time.endTime}, the weather in ${location.locationName} is expected to be ${time.parameter.parameterName}.`;
+            });
+            return forecastTimes?.join('\n') || `No weather data available for ${location.locationName}.`;
+        });
+
+        return {
+            message: weatherDetails.join('\n'),
+            data: data
+        };
+    } catch (error) {
+        console.error("Error fetching weather:", error);
+        return {
+            message: "Sorry, I couldn't fetch the weather data."
+        };
+    }
+}
+
 
 async function findRentableStation(): Promise<YouBikeDataWithDistance | null> {
     try {
@@ -142,6 +173,19 @@ async function searchGoogle(query: string): Promise<any | null> {
     }
 }
 const functionDeclarations = [
+    {
+        name: "getWeather",
+        description: "Get the current weather forecast, including temperature and condition.",
+        parameters: {
+            type: "object", 
+            properties: {
+                dummy: {
+                    type: "string",
+                    description: "This parameter is not used but is required by the API."
+                }
+            }
+        }
+    },
     {
         name: "findRentableStation",
         description: "Get the nearest YouBike station's data where there are available bikes to rent, including the distance from the user.",
@@ -215,11 +259,12 @@ const functions = {
     findReturnableStation,
     findNearestMetroStation,
     // findDistance
-    searchGoogle
+    searchGoogle,
+    getWeather,
 };
 
 const genAI = new GoogleGenerativeAI(apiKey);
-const model = genAI.getGenerativeModel({ model: "gemini-1.5-pro", systemInstruction: "You are a smart assistant, you use tools when you can use them, you answer questions in traditional chinese" });
+const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash", systemInstruction: "You are a smart assistant, you use tools when you can use them, you answer questions in traditional chinese" });
 const chat = model.startChat({ tools: [{ functionDeclarations }] });
 
 const renderMarkdown = (text: string) => {
@@ -239,6 +284,7 @@ const sendMessage = async () => {
         const functionCalls = aiResponse.functionCalls();
         console.log(text)
         console.log(functionCalls)
+        console.log(aiResponse.usageMetadata);
         if (functionCalls && functionCalls.length > 0) {
             const functionResults = await Promise.all(functionCalls.map(async (call) => {
                 if (call.name in functions) {
