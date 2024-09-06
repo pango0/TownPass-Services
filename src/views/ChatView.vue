@@ -42,8 +42,8 @@
                     {{ query }}
                 </button>
             </div>
-            <div class="flex items-center">
-                <input v-model="userInput" @keyup.enter="sendMessage" :disabled="loading"
+            <form class="flex items-center" @submit.prevent="sendMessage">
+                <input v-model="userInput" :disabled="loading"
                     class="flex-grow h-10 px-4 border border-tiffany-blue rounded-full focus:outline-none focus:ring-2 focus:ring-tiffany-blue"
                     placeholder="輸入你的問題" />
                 <button @click="sendMessage" :disabled="loading"
@@ -59,7 +59,7 @@
                         </svg>
                     </template>
                 </button>
-            </div>
+            </form>
         </div>
     </div>
 </template>
