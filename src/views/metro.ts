@@ -23,6 +23,8 @@ export interface MetroData {
 
 export interface MetroDataWithDistance extends MetroData{
     distance: number;
+    latitude: number;
+    longitude: number;
 }
 
 let userLatitude: number | null = null;
@@ -79,7 +81,9 @@ export async function fetchMetroData(): Promise<MetroDataWithDistance[]> {
 
         const dataWithDistance: MetroDataWithDistance[] = data.map(station => ({
             ...station,
-            distance: getDistance(userLatitude!, userLongitude!, station.StationPosition.PositionLat, station.StationPosition.PositionLon)
+            distance: getDistance(userLatitude!, userLongitude!, station.StationPosition.PositionLat, station.StationPosition.PositionLon),
+            latitude: station.StationPosition.PositionLat,
+            longitude: station.StationPosition.PositionLon,
         }));
         return dataWithDistance
     } catch (error) {

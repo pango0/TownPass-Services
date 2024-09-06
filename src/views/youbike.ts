@@ -21,6 +21,8 @@ export interface YouBikeData {
 
 export interface YouBikeDataWithDistance extends YouBikeData {
     distance: number;
+    latitude: number;
+    longitude: number;
 }
 
 let userLatitude: number | null = null;
@@ -77,7 +79,9 @@ export async function fetchYouBikeDataWithDistance(): Promise<YouBikeDataWithDis
 
         const dataWithDistance: YouBikeDataWithDistance[] = data.map(station => ({
             ...station,
-            distance: getDistance(userLatitude!, userLongitude!, station.latitude, station.longitude)
+            distance: getDistance(userLatitude!, userLongitude!, station.latitude, station.longitude),
+            latitude: station.latitude,
+            longitude: station.longitude,
         }));
 
         return dataWithDistance;

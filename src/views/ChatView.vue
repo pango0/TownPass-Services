@@ -1,3 +1,5 @@
+<!-- eslint-disable prettier-vue/prettier -->
+<!-- eslint-disable prettier-vue/prettier -->
 <template>
     <div class="flex flex-col h-screen max-w-2xl mx-auto bg-white shadow-lg rounded-lg overflow-hidden">
         <header class="flex justify-between items-center bg-white p-4">
@@ -18,6 +20,11 @@
                 <p class="font-semibold">{{ message.isUser ? '你' : '人工智慧助理' }}:</p>
                 <div v-if="message.isUser" class="mt-1">{{ message.content }}</div>
                 <div v-else v-html="renderMarkdown(message.content)" class="mt-1 prose prose-sm max-w-none"></div>
+                <div v-for="location in message.locations" :key="location.latitude" style="padding: 12px">
+                    <iframe class="w-full h-[300px] rounded-lg" height="300" style="border:0" loading="lazy" allowfullscreen
+                        referrerpolicy="no-referrer-when-downgrade" :src="`https://www.google.com/maps/embed/v1/directions?key=AIzaSyCpQnECnOpwD9-XT_Jah9o5qlqBHChW7IU
+    &origin=${userLatitude},${userLongitude}&destination=${location.latitude},${location.longitude}&mode=walking`"></iframe>
+                </div>
             </div>
         </div>
         <div class="p-4 bg-white border-t border-gray-200">
@@ -51,7 +58,7 @@
 import { ref, onMounted, nextTick } from 'vue';
 import { GoogleGenerativeAI } from "@google/generative-ai";
 import { marked } from 'marked';
-import { getNearestRentableStation, getNearestReturnableStation, YouBikeDataWithDistance} from './youbike';
+import { getNearestRentableStation, getNearestReturnableStation, YouBikeDataWithDistance } from './youbike';
 import { getNearestMetroStation, MetroDataWithDistance } from './metro';
 import { getDistance } from './distance'
 import { googleSearch } from './search';
@@ -92,7 +99,15 @@ function initGeolocation(): Promise<void> {
 
 const apiKey = import.meta.env.VITE_GOOGLE_API_KEY;
 const userInput = ref('');
-const chatHistory = ref<Array<{ id: number; isUser: boolean; content: string }>>([]);
+const chatHistory = ref<Array<{
+    id: number;
+    isUser: boolean;
+    content: string;
+    locations: Array<{
+        latitude: number;
+        longitude: number;
+    }>;
+}>>([]);
 const loading = ref(false);
 const chatContainer = ref<HTMLElement | null>(null);
 
@@ -157,7 +172,7 @@ const functionDeclarations = [
         name: "getWeather",
         description: "Get the current weather forecast, including temperature and condition.",
         parameters: {
-            type: "object", 
+            type: "object",
             properties: {
                 dummy: {
                     type: "string",
@@ -175,7 +190,7 @@ const functionDeclarations = [
                     type: "string",
                     description: "This parameter is not used but is required by the API."
                 }
-            } 
+            }
         }
     },
     {
@@ -267,7 +282,7 @@ const sendMessage = async () => {
         console.log(text)
         console.log(functionCalls)
         console.log(aiResponse.usageMetadata);
-    if (functionCalls && functionCalls.length > 0) {
+        if (functionCalls && functionCalls.length > 0) {
             const functionResults = await Promise.all(functionCalls.map(async (call) => {
                 if (call.name in functions) {
                     console.log(call.name)
@@ -275,33 +290,60 @@ const sendMessage = async () => {
                         const query = call.args['query'];
                         if (query) {
                             const data = await functions[call.name](query);
-                            return { name: call.name, data };
+                            return {
+                                name: call.name,
+                                data: data,
+                                location: null
+                            };
                         }
                     } else {
                         const data = await functions[call.name as keyof typeof functions]();
-                        return { name: call.name, data };
+                        return {
+                            name: call.name,
+                            data: data,
+                            location: (data.latitude !== undefined && data.longitude !== undefined) ? {
+                                latitude: data.latitude,
+                                longitude: data.longitude,
+                            } : null,
+                        };
                     }
                 }
                 return null;
             }));
 
-            const validResults = functionResults.filter((result): result is { name: string; data: any } => result !== null);
+            const validResults = functionResults
+                .filter((result): result is {
+                    name: string;
+                    data: any;
+                    location: {
+                        latitude: number;
+                        longitude: number;
+                    } | null
+                } => result !== null);
+
 
             if (validResults.length > 0) {
                 const followUpResult = await chat.sendMessage(JSON.stringify(validResults));
-                chatHistory.value.push({ id: Date.now(), isUser: false, content: followUpResult.response.text() });
+                chatHistory.value.push({
+                    id: Date.now(),
+                    isUser: false,
+                    content: followUpResult.response.text(),
+                    locations: validResults
+                        .filter(res => res.location !== null)
+                        .map(res => res.location as { latitude: number; longitude: number }),
+                });
             } else {
                 // console.log("no tools used")
-                chatHistory.value.push({ id: Date.now(), isUser: false, content: text });
+                chatHistory.value.push({ id: Date.now(), isUser: false, content: text, locations: [] });
             }
         } else {
             console.log("no tools used")
-            
-            chatHistory.value.push({ id: Date.now(), isUser: false, content: text });
+
+            chatHistory.value.push({ id: Date.now(), isUser: false, content: text, locations: [] });
         }
     } catch (error) {
         console.error('Error sending message:', error);
-        chatHistory.value.push({ id: Date.now(), isUser: false, content: 'Sorry, an error occurred. Please try again.' });
+        chatHistory.value.push({ id: Date.now(), isUser: false, content: 'Sorry, an error occurred. Please try again.', locations: [] });
     } finally {
         userInput.value = '';
         loading.value = false;
