@@ -276,6 +276,8 @@ const sendMessage = async () => {
 
     loading.value = true;
     chatHistory.value.push({ id: Date.now(), isUser: true, content: userInput.value });
+    await nextTick();
+    scrollToBottom();
 
     try {
         const result = await chat.sendMessage(userInput.value);
@@ -285,7 +287,7 @@ const sendMessage = async () => {
         console.log(text)
         console.log(functionCalls)
         console.log(aiResponse.usageMetadata);
-        if (functionCalls && functionCalls.length > 0) {
+    if (functionCalls && functionCalls.length > 0) {
             const functionResults = await Promise.all(functionCalls.map(async (call) => {
                 if (call.name in functions) {
                     console.log(call.name)
@@ -330,7 +332,10 @@ const sendMessage = async () => {
 
 const scrollToBottom = () => {
     if (chatContainer.value) {
-        chatContainer.value.scrollTop = chatContainer.value.scrollHeight;
+        chatContainer.value.scrollTo({
+            top: chatContainer.value.scrollHeight,
+            behavior: 'smooth'
+        });
     }
 };
 
