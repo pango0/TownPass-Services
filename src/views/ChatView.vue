@@ -48,15 +48,18 @@
                     placeholder="輸入你的問題" />
                 <button @click="sendMessage" :disabled="loading"
                     class="ml-2 bg-tiffany-blue text-white h-10 w-10 rounded-full hover:bg-tiffany-blue-dark transition-colors flex items-center justify-center">
-                    <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 transform rotate-90" viewBox="0 0 20 20"
-                        fill="currentColor">
-                        <path
-                            d="M10.894 2.553a1 1 0 00-1.788 0l-7 14a1 1 0 001.169 1.409l5-1.429A1 1 0 009 15.571V11a1 1 0 112 0v4.571a1 1 0 00.725.962l5 1.428a1 1 0 001.17-1.408l-7-14z" />
-                    </svg>
+                    <template v-if="loading">
+                        <span class="loader"></span>
+                    </template>
+                    <template v-else>
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 transform rotate-90" viewBox="0 0 20 20"
+                            fill="currentColor">
+                            <path
+                                d="M10.894 2.553a1 1 0 00-1.788 0l-7 14a1 1 0 001.169 1.409l5-1.429A1 1 0 009 15.571V11a1 1 0 112 0v4.571a1 1 0 00.725.962l5 1.428a1 1 0 001.17-1.408l-7-14z" />
+                        </svg>
+                    </template>
                 </button>
             </div>
-
-            <p v-if="loading" class="mt-2 text-gray-600">Waiting for response...</p>
         </div>
     </div>
 </template>
@@ -287,11 +290,13 @@ const sendMessage = async () => {
 
     loading.value = true;
     chatHistory.value.push({ id: Date.now(), isUser: true, content: userInput.value });
+    const query = userInput.value;
+    userInput.value = '';
     await nextTick();
     scrollToBottom();
 
     try {
-        const result = await chat.sendMessage(userInput.value);
+        const result = await chat.sendMessage(query);
         const aiResponse = result.response;
         const text = aiResponse.text();
         const functionCalls = aiResponse.functionCalls();
@@ -365,7 +370,6 @@ const sendMessage = async () => {
         console.error('Error sending message:', error);
         chatHistory.value.push({ id: Date.now(), isUser: false, content: 'Sorry, an error occurred. Please try again.', locations: [] });
     } finally {
-        userInput.value = '';
         loading.value = false;
         await nextTick();
         scrollToBottom();
@@ -414,5 +418,26 @@ onMounted(() => {
 
 .focus\:ring-tiffany-blue:focus {
     --tw-ring-color: var(--tiffany-blue);
+}
+
+.loader {
+    width: 20px;
+    height: 20px;
+    border: 2px solid #FFF;
+    border-bottom-color: transparent;
+    border-radius: 50%;
+    display: inline-block;
+    box-sizing: border-box;
+    animation: rotation 1s linear infinite;
+}
+
+@keyframes rotation {
+    0% {
+        transform: rotate(0deg);
+    }
+
+    100% {
+        transform: rotate(360deg);
+    }
 }
 </style>
