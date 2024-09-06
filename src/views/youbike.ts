@@ -79,7 +79,7 @@ export async function fetchYouBikeDataWithDistance(): Promise<YouBikeDataWithDis
 
         const dataWithDistance: YouBikeDataWithDistance[] = data.map(station => ({
             ...station,
-            sna: station.sna.slice("YouBike2.0__".length),
+            sna: station.sna.slice("YouBike2.0_".length),
             distance: getDistance(userLatitude!, userLongitude!, station.latitude, station.longitude),
             latitude: station.latitude,
             longitude: station.longitude,
