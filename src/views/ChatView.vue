@@ -21,12 +21,18 @@
             </div>
         </div>
         <div class="p-4 bg-white border-t border-gray-200">
+            <div class="overflow-x-auto whitespace-nowrap mb-4">
+                <button v-for="query in commonQueries" :key="query" @click="sendCommonQuery(query)"
+                    class="inline-block px-3 py-1 mr-2 text-sm bg-white-200 text-gray-700 rounded-full border border-[#0abab5] hover:bg-gray-300 transition-colors">
+                    {{ query }}
+                </button>
+            </div>
             <div class="flex items-center">
                 <input v-model="userInput" @keyup.enter="sendMessage" :disabled="loading"
-                    class="flex-grow h-10 px-4 border border-tiffany-blue rounded-l-lg focus:outline-none focus:ring-2 focus:ring-tiffany-blue"
+                    class="flex-grow h-10 px-4 border border-tiffany-blue rounded-full focus:outline-none focus:ring-2 focus:ring-tiffany-blue"
                     placeholder="輸入你的問題" />
                 <button @click="sendMessage" :disabled="loading"
-                    class="bg-tiffany-blue text-white h-10 px-3 py-2 rounded-r-lg hover:bg-tiffany-blue-dark transition-colors flex items-center justify-center">
+                    class="ml-2 bg-tiffany-blue text-white h-10 w-10 rounded-full hover:bg-tiffany-blue-dark transition-colors flex items-center justify-center">
                     <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 transform rotate-90" viewBox="0 0 20 20"
                         fill="currentColor">
                         <path
@@ -34,6 +40,7 @@
                     </svg>
                 </button>
             </div>
+
             <p v-if="loading" class="mt-2 text-gray-600">Waiting for response...</p>
         </div>
     </div>
@@ -51,6 +58,18 @@ import { googleSearch } from './search';
 import { getWeather } from './weather';
 let userLatitude: number | null = null;
 let userLongitude: number | null = null;
+
+const commonQueries = ref([
+    "附近有哪裡可以租YouBike？",
+    "附近有哪裡可以還YouBike？",
+    "最近的捷運站在哪裡？",
+    "台北市有哪些景點推薦？",
+    "今天天氣如何？"
+]);
+const sendCommonQuery = (query: string) => {
+    userInput.value = query;
+    sendMessage();
+};
 
 function initGeolocation(): Promise<void> {
     return new Promise((resolve, reject) => {
@@ -245,7 +264,7 @@ const functions = {
 };
 
 const genAI = new GoogleGenerativeAI(apiKey);
-const model = genAI.getGenerativeModel({ model: "gemini-1.5-pro", systemInstruction: "You are a smart assistant, you use tools when you can use them, you answer questions in traditional chinese" });
+const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash", systemInstruction: "You are a smart assistant, you use tools when you can use them, you answer questions in traditional chinese" });
 const chat = model.startChat({ tools: [{ functionDeclarations }] });
 
 const renderMarkdown = (text: string) => {
@@ -265,6 +284,7 @@ const sendMessage = async () => {
         const functionCalls = aiResponse.functionCalls();
         console.log(text)
         console.log(functionCalls)
+        console.log(aiResponse.usageMetadata);
         if (functionCalls && functionCalls.length > 0) {
             const functionResults = await Promise.all(functionCalls.map(async (call) => {
                 if (call.name in functions) {
