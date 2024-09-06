@@ -258,6 +258,7 @@ const sendMessage = async () => {
     chatHistory.value.push({ id: Date.now(), isUser: true, content: userInput.value });
     await nextTick();
     scrollToBottom();
+
     try {
         const result = await chat.sendMessage(userInput.value);
         const aiResponse = result.response;
@@ -266,7 +267,7 @@ const sendMessage = async () => {
         console.log(text)
         console.log(functionCalls)
         console.log(aiResponse.usageMetadata);
-        if (functionCalls && functionCalls.length > 0) {
+    if (functionCalls && functionCalls.length > 0) {
             const functionResults = await Promise.all(functionCalls.map(async (call) => {
                 if (call.name in functions) {
                     console.log(call.name)
