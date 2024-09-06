@@ -1,3 +1,6 @@
+// weather.ts
+
+// Interface for the weather forecast data
 export interface WeatherForecast {
     success: string;
     result: {
@@ -34,29 +37,40 @@ export interface WeatherForecast {
     };
 }
 
-// The response format for the chatbot
-export interface BotResponse {
-    message: string;
-    data?: any;
-}
+export async function fetchWeatherData(locationName: string): Promise<BotResponse> {
+    const locationWeatherUrls: { [key: string]: string } = {
+        // Your mapping of district names to URLs
+        "大安區": 'https://opendata.cwa.gov.tw/api/v1/rest/datastore/F-D0047-061?Authorization=CWA-EC987A54-DB8B-4E1A-AD8E-C775D2258D57&locationName=%E5%A4%A7%E5%AE%89%E5%8D%80&elementName=WeatherDescription',
+    "中正區": 'https://opendata.cwa.gov.tw/api/v1/rest/datastore/F-D0047-061?Authorization=CWA-EC987A54-DB8B-4E1A-AD8E-C775D2258D57&locationName=%E4%B8%AD%E6%AD%A3%E5%8D%80&elementName=WeatherDescription',
+    "北投區": 'https://opendata.cwa.gov.tw/api/v1/rest/datastore/F-D0047-061?Authorization=CWA-EC987A54-DB8B-4E1A-AD8E-C775D2258D57&locationName=%E5%8C%97%E6%8A%95%E5%8D%80&elementName=WeatherDescription',
+    "士林區": 'https://opendata.cwa.gov.tw/api/v1/rest/datastore/F-D0047-061?Authorization=CWA-EC987A54-DB8B-4E1A-AD8E-C775D2258D57&locationName=%E5%A3%AB%E6%9E%97%E5%8D%80&elementName=WeatherDescription',
+    "內湖區": 'https://opendata.cwa.gov.tw/api/v1/rest/datastore/F-D0047-061?Authorization=CWA-EC987A54-DB8B-4E1A-AD8E-C775D2258D57&locationName=%E5%85%A7%E6%B9%96%E5%8D%80&elementName=WeatherDescription',
+    "中山區": 'https://opendata.cwa.gov.tw/api/v1/rest/datastore/F-D0047-061?Authorization=CWA-EC987A54-DB8B-4E1A-AD8E-C775D2258D57&locationName=%E4%B8%AD%E5%B1%B1%E5%8D%80&elementName=WeatherDescription',
+    "大同區": 'https://opendata.cwa.gov.tw/api/v1/rest/datastore/F-D0047-061?Authorization=CWA-EC987A54-DB8B-4E1A-AD8E-C775D2258D57&locationName=%E5%A4%A7%E5%90%8C%E5%8D%80&elementName=WeatherDescription',
+    "松山區": 'https://opendata.cwa.gov.tw/api/v1/rest/datastore/F-D0047-061?Authorization=CWA-EC987A54-DB8B-4E1A-AD8E-C775D2258D57&locationName=%E6%9D%BE%E5%B1%B1%E5%8D%80&elementName=WeatherDescription',
+    "南港區": 'https://opendata.cwa.gov.tw/api/v1/rest/datastore/F-D0047-061?Authorization=CWA-EC987A54-DB8B-4E1A-AD8E-C775D2258D57&locationName=%E5%8D%97%E6%B8%AF%E5%8D%80&elementName=WeatherDescription',
+    "萬華區": 'https://opendata.cwa.gov.tw/api/v1/rest/datastore/F-D0047-061?Authorization=CWA-EC987A54-DB8B-4E1A-AD8E-C775D2258D57&locationName=%E8%90%AC%E8%8F%AF%E5%8D%80&elementName=WeatherDescription',
+    "信義區": 'https://opendata.cwa.gov.tw/api/v1/rest/datastore/F-D0047-061?Authorization=CWA-EC987A54-DB8B-4E1A-AD8E-C775D2258D57&locationName=%E4%BF%A1%E7%BE%A9%E5%8D%80&elementName=WeatherDescription',
+    "文山區": 'https://opendata.cwa.gov.tw/api/v1/rest/datastore/F-D0047-061?Authorization=CWA-EC987A54-DB8B-4E1A-AD8E-C775D2258D57&locationName=%E6%96%87%E5%B1%B1%E5%8D%80&elementName=WeatherDescription'
+    };
 
-// Example function to fetch weather data and prepare a chatbot-friendly response
-export async function fetchWeatherData(): Promise<BotResponse> {
-    const url = 'https://opendata.cwa.gov.tw/api/v1/rest/datastore/F-D0047-061?Authorization=CWA-EC987A54-DB8B-4E1A-AD8E-C775D2258D57&locationName=%E5%A4%A7%E5%AE%89%E5%8D%80&elementName=WeatherDescription'; // Replace with actual API endpoint
+    const weatherUrl = locationWeatherUrls[locationName];
+    if (!weatherUrl) {
+        return {
+            message: `Sorry, I couldn't find weather data for the location: ${locationName}.`
+        };
+    }
 
     try {
-        const response = await fetch(url);
-
+        const response = await fetch(weatherUrl);
         if (!response.ok) {
             throw new Error(`Network response was not ok: ${response.statusText}`);
         }
 
         const data: WeatherForecast = await response.json();
 
-        // Process the weather data
         const weatherDetails = data.records.locations.map((locationSet) => {
             return locationSet.location.map((location) => {
-                const locationName = location.locationName;
                 const weatherElement = location.weatherElement.find(
                     (element) => element.elementName === 'WeatherDescription'
                 );
@@ -73,12 +87,9 @@ export async function fetchWeatherData(): Promise<BotResponse> {
             }).join('\n');
         }).join('\n');
 
-        const responseMessage = weatherDetails;
-
-        // Return structured data for the chatbot
         return {
-            message: responseMessage,
-            data: data // Optionally include raw data for further processing
+            message: weatherDetails,
+            data: data
         };
     } catch (error) {
         console.error('Failed to fetch or process weather data:', error);
