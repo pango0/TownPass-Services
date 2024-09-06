@@ -2,8 +2,8 @@
 <!-- eslint-disable prettier-vue/prettier -->
 <template>
     <div class="flex flex-col h-screen max-w-2xl mx-auto bg-white shadow-lg rounded-lg overflow-hidden">
-        <header class="flex justify-between items-center bg-white p-4">
-            <h1 class="text-3xl font-bold text-tiffany-blue">人工智慧助理</h1>
+        <!-- <header class="flex justify-between items-center bg-white p-4">
+            <h1 class="text-3xl font-bold text-tiffany-blue"></h1>
             <router-link to="/settings" class="text-[#71b2c2] hover:text-tiffany-blue">
                 <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24"
                     stroke="currentColor">
@@ -13,7 +13,7 @@
                         d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
                 </svg>
             </router-link>
-        </header>
+        </header> -->
         <div class="flex-grow overflow-y-auto p-4 space-y-4" ref="chatContainer">
             <div v-for="message in chatHistory" :key="message.id" class="p-3 rounded-lg"
                 :class="message.isUser ? 'bg-tiffany-blue text-white' : 'bg-gray-100'">
