@@ -92,7 +92,7 @@ export async function fetchMetroData(): Promise<MetroDataWithDistance[]> {
     }
 }
 
-export async function getNearestMetroStation(): Promise<(MetroDataWithDistance) | null> {
+export async function getNearestMetroStation(k: number): Promise<(MetroDataWithDistance)[] | null> {
     try {
         const stations = await fetchMetroData();
 
@@ -100,9 +100,9 @@ export async function getNearestMetroStation(): Promise<(MetroDataWithDistance) 
             return null;
         }
 
-        return stations.reduce((nearest, current) => 
-            current.distance< nearest.distance ? current : nearest
-        );
+        const sortedStations = stations.sort((a, b) => a.distance - b.distance);
+
+        return sortedStations.slice(0, k);
     } catch (error) {
         console.error('Error finding nearest returnable station:', error);
         return null;

@@ -21,8 +21,16 @@
                 <div v-if="message.isUser" class="mt-1">{{ message.content }}</div>
                 <div v-else v-html="renderMarkdown(message.content)" class="mt-1 prose prose-sm max-w-none"></div>
                 <div v-for="location in message.locations" :key="location.latitude" style="padding: 12px">
-                    <iframe class="w-full h-[300px] rounded-lg" height="300" style="border:0" loading="lazy" allowfullscreen
-                        referrerpolicy="no-referrer-when-downgrade" :src="`https://www.google.com/maps/embed/v1/directions?key=AIzaSyCpQnECnOpwD9-XT_Jah9o5qlqBHChW7IU
+                    <div>
+                        <span v-if="location.functionName === 'findNearestMetroStation'">捷運地圖：</span>
+                        <span
+                            v-else-if="location.functionName === 'findReturnableStation' || location.functionName === 'findRentableStation'">YouBike地圖：</span>
+                    </div>
+
+
+                    <iframe class="w-full h-[300px] rounded-lg" height="300" style="border:0" loading="lazy"
+                        allowfullscreen referrerpolicy="no-referrer-when-downgrade"
+                        :src="`https://www.google.com/maps/embed/v1/directions?key=AIzaSyCpQnECnOpwD9-XT_Jah9o5qlqBHChW7IU
     &origin=${userLatitude},${userLongitude}&destination=${location.latitude},${location.longitude}&mode=walking`"></iframe>
                 </div>
             </div>
@@ -104,6 +112,7 @@ const chatHistory = ref<Array<{
     isUser: boolean;
     content: string;
     locations: Array<{
+        functionName: string;
         latitude: number;
         longitude: number;
     }>;
@@ -113,6 +122,7 @@ const chatContainer = ref<HTMLElement | null>(null);
 
 async function getWeather(): Promise<BotResponse> {// Replace with actual weather API URL
     try {
+        initGeolocation()
         return await fetchWeatherData();
     } catch (error) {
         console.error("Error fetching weather:", error);
@@ -122,27 +132,30 @@ async function getWeather(): Promise<BotResponse> {// Replace with actual weathe
     }
 }
 
-async function findRentableStation(): Promise<YouBikeDataWithDistance | null> {
+async function findRentableStation(k: number): Promise<YouBikeDataWithDistance[] | null> {
     try {
-        return await getNearestRentableStation();
+        initGeolocation()
+        return await getNearestRentableStation(k);
     } catch (error) {
         console.error("Error finding nearest rentable station:", error);
         return null;
     }
 }
 
-async function findReturnableStation(): Promise<YouBikeDataWithDistance | null> {
+async function findReturnableStation(k: number): Promise<YouBikeDataWithDistance[] | null> {
     try {
-        return await getNearestReturnableStation();
+        initGeolocation()
+        return await getNearestReturnableStation(k);
     } catch (error) {
         console.error("Error finding nearest returnable station:", error);
         return null;
     }
 }
 
-async function findNearestMetroStation(): Promise<MetroDataWithDistance> {
+async function findNearestMetroStation(k: number): Promise<MetroDataWithDistance[]> {
     try {
-        return await getNearestMetroStation();
+        initGeolocation()
+        return await getNearestMetroStation(k);
     } catch (error) {
         console.error("Error finding nearest metro station:", error);
         return null;
@@ -174,7 +187,7 @@ const functionDeclarations = [
         parameters: {
             type: "object",
             properties: {
-                dummy: {
+                k: {
                     type: "string",
                     description: "This parameter is not used but is required by the API."
                 }
@@ -183,38 +196,41 @@ const functionDeclarations = [
     },
     {
         name: "findRentableStation",
-        description: "Get the nearest YouBike station's data where there are available bikes to rent, including the distance from the user.",
+        description: "Get the kth nearest YouBike station's data where there are available bikes to rent, including the distance from the user.",
         parameters: {
             type: "object", properties: {
-                dummy: {
-                    type: "string",
-                    description: "This parameter is not used but is required by the API."
+                k: {
+                    type: "number",
+                    description: "This parameter is k."
                 }
-            }
+            },
+            required: ["k"]
         }
     },
     {
         name: "findReturnableStation",
-        description: "Get the nearest YouBike station's data where there are available vacancies to return the bikes, including the distance from the user.",
+        description: "Get the kth nearest YouBike station's data where there are available vacancies to return the bikes, including the distance from the user.",
         parameters: {
             type: "object", properties: {
-                dummy: {
-                    type: "string",
-                    description: "This parameter is not used but is required by the API."
+                k: {
+                    type: "number",
+                    description: "This parameter is k."
                 }
-            }
+            },
+            required: ["k"]
         }
     },
     {
         name: "findNearestMetroStation",
-        description: "Get the nearest Metro station's data, including the distance from the user.",
+        description: "Get the kth nearest Metro station's data, including the distance from the user.",
         parameters: {
             type: "object", properties: {
-                query: {
-                    type: "string",
-                    description: "This parameter is not used but is required by the API."
+                k: {
+                    type: "number",
+                    description: "This parameter is k."
                 }
-            }
+            },
+            required: ["k"]
         }
     },
     // {
@@ -259,7 +275,7 @@ const functions = {
 };
 
 const genAI = new GoogleGenerativeAI(apiKey);
-const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash", systemInstruction: "You are a smart assistant, you use tools when you can use them, you answer questions in traditional chinese" });
+const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash", systemInstruction: "You answer questions in traditional chinese" });
 const chat = model.startChat({ tools: [{ functionDeclarations }] });
 
 const renderMarkdown = (text: string) => {
@@ -297,11 +313,14 @@ const sendMessage = async () => {
                             };
                         }
                     } else {
-                        const data = await functions[call.name as keyof typeof functions]();
+                        console.log(call.args)
+                        const data = await functions[call.name as keyof typeof functions](call.args['k']);
+                        console.log(data)
                         return {
                             name: call.name,
                             data: data,
                             location: (data.latitude !== undefined && data.longitude !== undefined) ? {
+                                functionName: call.name,
                                 latitude: data.latitude,
                                 longitude: data.longitude,
                             } : null,
@@ -316,6 +335,7 @@ const sendMessage = async () => {
                     name: string;
                     data: any;
                     location: {
+                        functionName: string;
                         latitude: number;
                         longitude: number;
                     } | null

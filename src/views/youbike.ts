@@ -91,7 +91,7 @@ export async function fetchYouBikeDataWithDistance(): Promise<YouBikeDataWithDis
     }
 }
 
-export async function getNearestRentableStation(): Promise<YouBikeDataWithDistance | null> {
+export async function getNearestRentableStation(k: number): Promise<YouBikeDataWithDistance[] | null> {
     try {
         const stations = await fetchYouBikeDataWithDistance();
 
@@ -101,16 +101,16 @@ export async function getNearestRentableStation(): Promise<YouBikeDataWithDistan
             return null;
         }
 
-        return rentableStations.reduce((nearest, current) =>
-            current.distance < nearest.distance ? current : nearest
-        );
+        const sortedStations = rentableStations.sort((a, b) => a.distance - b.distance);
+
+        return sortedStations.slice(0, k);
     } catch (error) {
         console.error('Error finding nearest rentable station:', error);
         return null;
     }
 }
 
-export async function getNearestReturnableStation(): Promise<YouBikeDataWithDistance | null> {
+export async function getNearestReturnableStation(k: number): Promise<YouBikeDataWithDistance[] | null> {
     try {
         const stations = await fetchYouBikeDataWithDistance();
 
@@ -120,11 +120,11 @@ export async function getNearestReturnableStation(): Promise<YouBikeDataWithDist
             return null;
         }
 
-        return returnableStations.reduce((nearest, current) =>
-            current.distance < nearest.distance ? current : nearest
-        );
+        const sortedStations = returnableStations.sort((a, b) => a.distance - b.distance);
+
+        return sortedStations.slice(0, k);
     } catch (error) {
-        console.error('Error finding nearest returnable station:', error);
+        console.error('Error finding nearest returnable stations:', error);
         return null;
     }
 }
