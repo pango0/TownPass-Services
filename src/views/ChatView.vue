@@ -79,6 +79,10 @@ import { getDistance } from './distance';
 import { googleSearch } from './search';
 import { fetchWeatherData, BotResponse } from './weather';
 import { TrashCarData, getNearestTrashCarLocations } from './trash';
+import { useUserStore } from '../stores/user';
+
+const userStore = useUserStore();
+let userName = 'Guest';
 
 let userLatitude: number | null = null;
 let userLongitude: number | null = null;
@@ -434,6 +438,18 @@ const scrollToBottom = () => {
 };
 
 onMounted(() => {
+    userName = userStore.user?.realName ?? '';
+  console.log(userName);
+    const welcomeMessage = `${userName}您好，請問需要什麼服務嗎？`;
+  chatHistory.value.push({
+    id: Date.now(),
+    isUser: false,
+    content: welcomeMessage,
+    locations: []
+  });
+  return{
+    message:"${welcomeMessage}"
+  };
     scrollToBottom();
 });
 </script>
