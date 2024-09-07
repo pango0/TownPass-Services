@@ -6,35 +6,7 @@
                 <p class="font-semibold">{{ message.isUser ? '你' : '人工智慧助理' }}:</p>
                 <div v-if="message.isUser" class="mt-1">{{ message.content }}</div>
                 <div v-else v-html="renderMarkdown(message.content)" class="mt-1 prose prose-sm max-w-none"></div>
-                <div class="maps-container">
-                    <div class="maps-scroll-container" ref="scrollContainer" @scroll="updateActiveDot">
-                        <div v-for="(location, index) in message.locations" :key="location.latitude" class="map-item">
-                            <div class="map-title">
-                                <span>{{ location.title }}</span>
-                            </div>
-                            <iframe class="map-frame" loading="lazy" allowfullscreen
-                                referrerpolicy="no-referrer-when-downgrade"
-                                :src="`https://www.google.com/maps/embed/v1/directions?key=AIzaSyCpQnECnOpwD9-XT_Jah9o5qlqBHChW7IU&origin=${userLatitude},${userLongitude}&destination=${location.latitude},${location.longitude}&mode=walking`"></iframe>
-                        </div>
-                    </div>
-                    <div class="dot-indicators">
-                        <span v-for="(_, index) in message.locations" :key="index" class="dot"
-                            :class="{ 'active': activeDotIndex === index }" @click="scrollToMap(index)"></span>
-                    </div>
-                </div>
-                <div v-if="message.suggestedService != null" class="mt-4">
-                    <!-- 標題 -->
-                    <div class="text-semibold font-bold mb-2 text-gray-700">
-                        建議的服務：
-                    </div>
-                    <!-- 將整個卡片變成連結，並且使其具有外框裝飾 -->
-                    <a :href="message.suggestedService.url" target="_blank"
-                        class="inline-block p-3 bg-gray-100 rounded-lg border border-tiffany-blue shadow-lg text-tiffany-blue hover:bg-tiffany-blue transition-all duration-300 ease-in-out transform hover:scale-105">
-                        <div class="font-semibold">
-                            {{ message.suggestedService.text }}
-                        </div>
-                    </a>
-                </div>
+                <!-- Other content here -->
             </div>
         </div>
         <div class="p-4 bg-white border-t border-gray-200">
@@ -45,7 +17,7 @@
                 </button>
             </div>
             <form class="flex items-center" @submit.prevent="sendMessage">
-                <button @click="toggleVoiceInput" class="bg-tiffany-blue p-2 rounded-full focus:outline-none mr-2 hover:bg-tiffany-blue-dark transition-colors flex items-center justify-center">
+                <button @click="toggleVoiceInput" :class="isRed ? 'bg-red-500' : 'bg-tiffany-blue'" class="p-2 rounded-full focus:outline-none mr-2 hover:bg-tiffany-blue-dark transition-colors flex items-center justify-center">
                     <img :src="recorderIcon" alt="Recorder Icon" class="h-6 w-6 filter-white" />
                 </button>
 
@@ -69,6 +41,8 @@
         </div>
     </div>
 </template>
+
+
 
 <style>
 /* Add this to your CSS file or within a <style> block */
@@ -138,6 +112,8 @@ const sendCommonQuery = (query: string) => {
     userInput.value = query;
     sendMessage();
 };
+
+const isRed = ref(false);
 
 async function initGeolocation(): Promise<void> {
     return new Promise((resolve, reject) => {
@@ -264,6 +240,7 @@ async function transcribeAudio(base64Audio: string): Promise<string> {
 
 
 const toggleVoiceInput = async () => {
+    isRed.value = !isRed.value
     if (isListening.value) {
         stopVoiceInput();
     } else {
