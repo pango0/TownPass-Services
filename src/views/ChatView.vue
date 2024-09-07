@@ -115,19 +115,22 @@
 
 <script setup lang="ts">
 import { ref, onMounted, nextTick } from 'vue';
-import { GoogleGenerativeAI } from '@google/generative-ai';
 import { marked } from 'marked';
 import {
-  getNearestRentableStation,
-  getNearestReturnableStation,
-  YouBikeDataWithDistance
+    getNearestRentableStation,
+    getNearestReturnableStation,
+    YouBikeDataWithDistance
 } from './youbike';
-import { getNearestMetroStation, MetroDataWithDistance } from './metro';
+import { getNearestMetroStation, type MetroDataWithDistance } from './metro';
 import { getDistance } from './distance';
 import { googleSearch } from './search';
-import { fetchWeatherData } from './weather';
-import { TrashCarData, getNearestTrashCarLocations } from './trash';
+import { fetchWeatherData, type BotResponse } from './weather';
+import { type TrashCarData, getNearestTrashCarLocations } from './trash';
+import { fetchMetroGraphData, dijkstra, buildGraph, type Route } from './metroS2S';
+import { useUserStore } from '../stores/user';
 import { getTransitRoute } from './route_planning';
+const userStore = useUserStore();
+let userName = 'Guest';
 
 let userLatitude: number | null = null;
 let userLongitude: number | null = null;
@@ -163,7 +166,6 @@ function initGeolocation(): Promise<void> {
     }
   });
 }
-
 let origin: string = '';
 let destination: string = '';
 function fetchOriginDestination(message: string) {
@@ -175,7 +177,7 @@ function fetchOriginDestination(message: string) {
 }
 
 const MapapiKey = 'AIzaSyDd0sVXtX4MCYSbXwA6Tx5dVRAhk-_HYJQ';
-const apiKey = import.meta.env.VITE_GOOGLE_API_KEY;
+
 const userInput = ref('');
 const chatHistory = ref<
   Array<{
@@ -225,14 +227,14 @@ async function findReturnableStation(k: number): Promise<YouBikeDataWithDistance
   }
 }
 
-async function findNearestMetroStation(k: number): Promise<MetroDataWithDistance[]> {
-  try {
-    initGeolocation();
-    return await getNearestMetroStation(k);
-  } catch (error) {
-    console.error('Error finding nearest metro station:', error);
-    return null;
-  }
+async function findNearestMetroStation(k: number): Promise<MetroDataWithDistance[] | null> {
+    try {
+        initGeolocation();
+        return await getNearestMetroStation(k);
+    } catch (error) {
+        console.error('Error finding nearest metro station:', error);
+        return null;
+    }
 }
 
 async function findDistance(lat1: number, lon1: number): Promise<any | null> {
@@ -306,107 +308,107 @@ async function fetchAllRoutesToDestination(message: string): Promise<void> {
 }
 
 const functionDeclarations = [
-  {
-    name: 'getWeather',
-    description: 'Get the current weather forecast, including temperature and condition.',
-    parameters: {
-      type: 'object',
-      properties: {
-        k: {
-          type: 'string',
-          description: 'This parameter is not used but is required by the API.'
+    {
+        name: 'getWeather',
+        description: 'This tool is used to get the current weather forecast, including temperature and condition.',
+        parameters: {
+            type: 'object',
+            properties: {
+                k: {
+                    type: 'string',
+                    description: 'This parameter is not used but is required by the API.'
+                }
+            }
         }
-      }
-    }
-  },
-  {
-    name: 'findRentableStation',
-    description:
-      "Get the kth nearest YouBike station's data where there are available bikes to rent, including the distance from the user.",
-    parameters: {
-      type: 'object',
-      properties: {
-        k: {
-          type: 'number',
-          description: 'This parameter is k.'
+    },
+    {
+        name: 'findRentableStation',
+        description:
+            "This tool is used to get the kth nearest YouBike station's data where there are available bikes to rent from the user.",
+        parameters: {
+            type: 'object',
+            properties: {
+                k: {
+                    type: 'number',
+                    description: 'This parameter is the number of stations you want to retrieve.'
+                }
+            },
+            required: ['k']
         }
-      },
-      required: ['k']
-    }
-  },
-  {
-    name: 'findReturnableStation',
-    description:
-      "Get the kth nearest YouBike station's data where there are available vacancies to return the bikes, including the distance from the user.",
-    parameters: {
-      type: 'object',
-      properties: {
-        k: {
-          type: 'number',
-          description: 'This parameter is k.'
+    },
+    {
+        name: 'findReturnableStation',
+        description:
+            "This tool is used to get the kth nearest YouBike station's data where there are available vacancies to return the bikes from the user.",
+        parameters: {
+            type: 'object',
+            properties: {
+                k: {
+                    type: 'number',
+                    description: 'This parameter is k.'
+                }
+            },
+            required: ['k']
         }
-      },
-      required: ['k']
-    }
-  },
-  {
-    name: 'findNearestMetroStation',
-    description: "Get the kth nearest Metro station's data, including the distance from the user.",
-    parameters: {
-      type: 'object',
-      properties: {
-        k: {
-          type: 'number',
-          description: 'This parameter is k.'
+    },
+    {
+        name: 'findNearestMetroStation',
+        description: "Get the kth nearest Metro station's data, including the distance from the user.",
+        parameters: {
+            type: 'object',
+            properties: {
+                k: {
+                    type: 'number',
+                    description: 'This parameter is the number of stations you want to retrieve.'
+                }
+            }
         }
-      }
-    }
-  },
-  // {
-  //     name: "findDistance",
-  //     description: "This tool can retrieve the distance between a location and the user.",
-  //     parameters: {
-  //         type: "object", properties: {
-  //             lat1: {
-  //                 type: "number",
-  //                 description: "This parameter is the latitude of the location"
-  //             },
-  //             lon1: {
-  //                 type: "number",
-  //                 description: "This parameter is the longitude of the location"
-  //             }
-  //         }
-  //     }
-  // },
-  {
-    name: 'searchGoogle',
-    description: "Tool to obtain information you don't already know.",
-    parameters: {
-      type: 'object',
-      properties: {
-        query: {
-          type: 'string',
-          description: 'The search query you want to use'
+    },
+    // {
+    //     name: "findDistance",
+    //     description: "This tool can retrieve the distance between a location and the user.",
+    //     parameters: {
+    //         type: "object", properties: {
+    //             lat1: {
+    //                 type: "number",
+    //                 description: "This parameter is the latitude of the location"
+    //             },
+    //             lon1: {
+    //                 type: "number",
+    //                 description: "This parameter is the longitude of the location"
+    //             }
+    //         }
+    //     }
+    // },
+    {
+        name: 'searchGoogle',
+        description: "Tool to obtain information you don't already know.",
+        parameters: {
+            type: 'object',
+            properties: {
+                query: {
+                    type: 'string',
+                    description: 'The search query you want to use'
+                }
+            },
+            required: ['query']
         }
-      },
-      required: ['query']
-    }
-  },
-  {
-    name: 'findTrashCarLocation',
-    description:
-      'Get the kth nearest trash car location that is available today, including location and arrive time',
-    parameters: {
-      type: 'object',
-      properties: {
-        k: {
-          type: 'number',
-          description: 'This parameter is k.'
+    },
+    {
+        name: 'findTrashCarLocation',
+        description:
+            'Get the kth nearest trash car location that is available today, including location and arrive time',
+        parameters: {
+            type: 'object',
+            properties: {
+                k: {
+                    type: 'number',
+                    description: 'This parameter is k.'
+                }
+            }
         }
-      }
-    }
-  },
-  {
+    },
+    {
     name: 'fetchAllRoutesToDestination',
     description: 'give the possible route from origin to destination',
     parameters: {
@@ -432,167 +434,138 @@ const functions = {
   fetchAllRoutesToDestination
 };
 
-const genAI = new GoogleGenerativeAI(apiKey);
-const model = genAI.getGenerativeModel({
-  model: 'gemini-1.5-flash',
-  systemInstruction: 'You answer questions in traditional chinese'
-});
-let chat = model.startChat({ tools: [{ functionDeclarations }] });
+const apiKey = import.meta.env.VITE_OPENAI_API_KEY;
 
 const renderMarkdown = (text: string) => {
   return marked(text);
 };
 
 const sendMessage = async () => {
-  if (userInput.value.trim() === '') return;
+    if (userInput.value.trim() === '') return;
 
-  loading.value = true;
-  chatHistory.value.push({ id: Date.now(), isUser: true, content: userInput.value });
-  const query = userInput.value;
-  userInput.value = '';
-  await nextTick();
-  scrollToBottom();
-
-  try {
-    const result = await chat.sendMessage(query);
-    const aiResponse = result.response;
-    const text = aiResponse.text();
-    const functionCalls = aiResponse.functionCalls();
-    console.log(text);
-    console.log(functionCalls);
-    console.log(aiResponse.usageMetadata);
-    if (functionCalls && functionCalls.length > 0) {
-      const functionResults = await Promise.all(
-        functionCalls.map(async (call) => {
-          if (call.name in functions) {
-            console.log(call.name);
-            if (call.name === 'searchGoogle') {
-              const query = call.args['query'];
-              if (query) {
-                const data = await functions[call.name](query);
-                return {
-                  name: call.name,
-                  data: data,
-                  locations: []
-                };
-              }
-            } else if (call.name === 'getPosition') {
-              const data = await functions[call.name]();
-              return {
-                name: call.name,
-                data: data,
-                locations: []
-              };
-            } else if (call.name === 'fetchAllRoutesToDestination') {
-              const allRoutes = await Promise.all(
-                modes.map(async (mode) => {
-                  const routeData = await functions[call.name](query);
-                  return {
-                    mode: mode,
-                    route: routeData
-                  };
-                })
-              );
-
-              return {
-                name: call.name,
-                data: allRoutes,
-                locations: allRoutes.flatMap((route) => {
-                  const legs = route.route?.routes[0]?.legs[0];
-                  return [
-                    {
-                      functionName: call.name,
-                      latitude: legs.end_location.lat,
-                      longitude: legs.end_location.lng
-                    }
-                  ];
-                })
-              };
-            } else {
-              console.log(call.args);
-              const data = await functions[call.name as keyof typeof functions](call.args['k']);
-              console.log('Data content:', data);
-              console.log('Type of data:', typeof data);
-              const dataArray = Array.isArray(data) ? data : [data];
-              return {
-                name: call.name,
-                data: data,
-                locations: dataArray
-                  .map((item) =>
-                    item.latitude !== undefined && item.longitude !== undefined
-                      ? {
-                          functionName: call.name,
-                          latitude: item.latitude,
-                          longitude: item.longitude
-                        }
-                      : null
-                  )
-                  .filter((item) => item !== null)
-              };
-            }
-          }
-          return null;
-        })
-      );
-
-      const validResults = functionResults.filter(
-        (
-          result
-        ): result is {
-          name: string;
-          data: any;
-          locations: Array<{
-            functionName: string;
-            latitude: number;
-            longitude: number;
-          }>;
-        } => result !== null
-      );
-
-      if (validResults.length > 0) {
-        const followUpResult = await chat.sendMessage(JSON.stringify(validResults));
-        chatHistory.value.push({
-          id: Date.now(),
-          isUser: false,
-          content: followUpResult.response.text(),
-          locations: validResults.flatMap((res) => res.locations)
-        });
-      } else {
-        // console.log("no tools used")
-        chatHistory.value.push({ id: Date.now(), isUser: false, content: text, locations: [] });
-      }
-    } else {
-      console.log('no tools used');
-      chatHistory.value.push({ id: Date.now(), isUser: false, content: text, locations: [] });
-    }
-  } catch (error) {
-    console.error('Error sending message:', error);
-    chatHistory.value.push({
-      id: Date.now(),
-      isUser: false,
-      content: 'Sorry, an error occurred. Please try again.',
-      locations: []
-    });
-    chat = model.startChat({ tools: [{ functionDeclarations }] });
-    chat = model.startChat({ tools: [{ functionDeclarations }] });
-  } finally {
-    loading.value = false;
+    loading.value = true;
+    chatHistory.value.push({ id: Date.now(), isUser: true, content: userInput.value });
+    const query = userInput.value;
+    userInput.value = '';
     await nextTick();
     scrollToBottom();
-  }
+    console.log(query)
+    try {
+        // Prepare the payload for OpenAI API
+        const messages = [
+            { role: 'system', content: '你是一位台北市的助理，你叫做"台北通智慧助理". 請用繁體中文回答問題. ' },
+            { role: 'user', content: query }
+        ];
+
+        const body = {
+            model: 'gpt-4o',
+            messages: messages,
+            functions: functionDeclarations, // Pass any function declarations
+            function_call: 'auto', // Let the model decide when to call a function
+            // stream: true,
+        };
+
+        // Call OpenAI API
+        const response = await fetch('https://api.openai.com/v1/chat/completions', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${apiKey}`
+            },
+            body: JSON.stringify(body)
+        });
+        console.log('response',response)
+        const result = await response.json();
+        console.log('result',result)
+        const aiResponse = result.choices[0].message;
+        const text = aiResponse.content;
+        const functionCall = aiResponse.function_call;
+        console.log(text);
+        console.log(functionCall);
+
+        if (functionCall) {
+            // Process function calls
+            const functionName = functionCall.name;
+            const functionArgs = JSON.parse(functionCall.arguments);
+
+            if (functionName in functions) {
+                let functionResult;
+                
+                if (functionName === 'searchGoogle' && functionArgs.query) {
+                    functionResult = await functions[functionName](functionArgs.query);
+                } else if (functionName === 'getPosition') {
+                    functionResult = await functions[functionName]();
+                } else {
+                    functionResult = await functions[functionName](functionArgs.k);
+                }
+
+                const locations = Array.isArray(functionResult) ? functionResult.map(item => ({
+                    functionName,
+                    latitude: item.latitude,
+                    longitude: item.longitude,
+                })) : [];
+
+                // Send function result back to chat model
+                const followUpResult = await fetch('https://api.openai.com/v1/chat/completions', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': `Bearer ${apiKey}`
+                    },
+                    body: JSON.stringify({
+                        model: 'gpt-4o',
+                        messages: [
+                            { role: 'assistant', content: query+JSON.stringify(functionResult)+'請用繁體中文回答' }
+                        ],
+                    //     stream: true,
+                    })
+                });
+
+                const followUpResponse = await followUpResult.json();
+                chatHistory.value.push({
+                    id: Date.now(),
+                    isUser: false,
+                    content: followUpResponse.choices[0].message.content,
+                    locations: locations
+                });
+            }
+        } else {
+            // No function calls were made
+            chatHistory.value.push({ id: Date.now(), isUser: false, content: text, locations: [] });
+        }
+    } catch (error) {
+        console.error('Error sending message:', error);
+        chatHistory.value.push({ id: Date.now(), isUser: false, content: 'Sorry, an error occurred. Please try again.', locations: [] });
+    } finally {
+        loading.value = false;
+        await nextTick();
+        scrollToBottom();
+    }
 };
 
 const scrollToBottom = () => {
-  if (chatContainer.value) {
-    chatContainer.value.scrollTo({
-      top: chatContainer.value.scrollHeight,
-      behavior: 'smooth'
-    });
-  }
+    if (chatContainer.value) {
+        chatContainer.value.scrollTo({
+            top: chatContainer.value.scrollHeight,
+            behavior: 'smooth'
+        });
+    }
 };
 
 onMounted(() => {
-  scrollToBottom();
+    userName = userStore.user?.realName ?? '';
+  console.log(userName);
+    const welcomeMessage = `${userName}您好，請問需要什麼服務嗎？`;
+  chatHistory.value.push({
+    id: Date.now(),
+    isUser: false,
+    content: welcomeMessage,
+    locations: []
+  });
+  return{
+    message:"${welcomeMessage}"
+  };
+    scrollToBottom();
 });
 </script>
 
@@ -602,48 +575,48 @@ onMounted(() => {
 @import 'tailwindcss/utilities';
 
 :root {
-  --tiffany-blue: #71b2c2;
-  --tiffany-blue-dark: #0abab5;
+    --tiffany-blue: #71b2c2;
+    --tiffany-blue-dark: #0abab5;
 }
 
 .bg-tiffany-blue {
-  background-color: var(--tiffany-blue);
+    background-color: var(--tiffany-blue);
 }
 
 .text-tiffany-blue {
-  color: var(--tiffany-blue);
+    color: var(--tiffany-blue);
 }
 
 .border-tiffany-blue {
-  border-color: var(--tiffany-blue);
+    border-color: var(--tiffany-blue);
 }
 
 .hover\:bg-tiffany-blue-dark:hover {
-  background-color: var(--tiffany-blue-dark);
+    background-color: var(--tiffany-blue-dark);
 }
 
 .focus\:ring-tiffany-blue:focus {
-  --tw-ring-color: var(--tiffany-blue);
+    --tw-ring-color: var(--tiffany-blue);
 }
 
 .loader {
-  width: 20px;
-  height: 20px;
-  border: 2px solid #fff;
-  border-bottom-color: transparent;
-  border-radius: 50%;
-  display: inline-block;
-  box-sizing: border-box;
-  animation: rotation 1s linear infinite;
+    width: 20px;
+    height: 20px;
+    border: 2px solid #fff;
+    border-bottom-color: transparent;
+    border-radius: 50%;
+    display: inline-block;
+    box-sizing: border-box;
+    animation: rotation 1s linear infinite;
 }
 
 @keyframes rotation {
-  0% {
-    transform: rotate(0deg);
-  }
+    0% {
+        transform: rotate(0deg);
+    }
 
-  100% {
-    transform: rotate(360deg);
-  }
+    100% {
+        transform: rotate(360deg);
+    }
 }
 </style>
