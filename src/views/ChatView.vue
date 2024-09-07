@@ -73,7 +73,7 @@ import { getNearestRentableStation, getNearestReturnableStation, YouBikeDataWith
 import { getNearestMetroStation, MetroDataWithDistance } from './metro';
 import { getDistance } from './distance'
 import { googleSearch } from './search';
-import { fetchWeatherData, WeatherForecast } from './weather';
+import { BotResponse, fetchWeatherData, WeatherForecast } from './weather1';
 let userLatitude: number | null = null;
 let userLongitude: number | null = null;
 
@@ -83,6 +83,7 @@ const commonQueries = ref([
     "最近的捷運站在哪裡？",
     "台北市有哪些景點推薦？",
     "今天天氣如何？"
+
 ]);
 const sendCommonQuery = (query: string) => {
     userInput.value = query;
@@ -122,65 +123,50 @@ const chatHistory = ref<Array<{
 }>>([]);
 const loading = ref(false);
 const chatContainer = ref<HTMLElement | null>(null);
-async function fetchWeatherData(locationName: string): Promise<BotResponse> {
-    const locationWeatherUrls: { [key: string]: string } = {
-
-        "大安區": 'https://opendata.cwa.gov.tw/api/v1/rest/datastore/F-D0047-061?Authorization=CWA-EC987A54-DB8B-4E1A-AD8E-C775D2258D57&locationName=%E5%A4%A7%E5%AE%89%E5%8D%80&elementName=WeatherDescription',
-        "中正區": 'https://opendata.cwa.gov.tw/api/v1/rest/datastore/F-D0047-061?Authorization=CWA-EC987A54-DB8B-4E1A-AD8E-C775D2258D57&locationName=%E4%B8%AD%E6%AD%A3%E5%8D%80&elementName=WeatherDescription',
-        "北投區": 'https://opendata.cwa.gov.tw/api/v1/rest/datastore/F-D0047-061?Authorization=CWA-EC987A54-DB8B-4E1A-AD8E-C775D2258D57&locationName=%E5%8C%97%E6%8A%95%E5%8D%80&elementName=WeatherDescription',
-        "士林區": 'https://opendata.cwa.gov.tw/api/v1/rest/datastore/F-D0047-061?Authorization=CWA-EC987A54-DB8B-4E1A-AD8E-C775D2258D57&locationName=%E5%A3%AB%E6%9E%97%E5%8D%80&elementName=WeatherDescription',
-        "內湖區": 'https://opendata.cwa.gov.tw/api/v1/rest/datastore/F-D0047-061?Authorization=CWA-EC987A54-DB8B-4E1A-AD8E-C775D2258D57&locationName=%E5%85%A7%E6%B9%96%E5%8D%80&elementName=WeatherDescription',
-        "中山區": 'https://opendata.cwa.gov.tw/api/v1/rest/datastore/F-D0047-061?Authorization=CWA-EC987A54-DB8B-4E1A-AD8E-C775D2258D57&locationName=%E4%B8%AD%E5%B1%B1%E5%8D%80&elementName=WeatherDescription',
-        "大同區": 'https://opendata.cwa.gov.tw/api/v1/rest/datastore/F-D0047-061?Authorization=CWA-EC987A54-DB8B-4E1A-AD8E-C775D2258D57&locationName=%E5%A4%A7%E5%90%8C%E5%8D%80&elementName=WeatherDescription',
-        "松山區": 'https://opendata.cwa.gov.tw/api/v1/rest/datastore/F-D0047-061?Authorization=CWA-EC987A54-DB8B-4E1A-AD8E-C775D2258D57&locationName=%E6%9D%BE%E5%B1%B1%E5%8D%80&elementName=WeatherDescription',
-        "南港區": 'https://opendata.cwa.gov.tw/api/v1/rest/datastore/F-D0047-061?Authorization=CWA-EC987A54-DB8B-4E1A-AD8E-C775D2258D57&locationName=%E5%8D%97%E6%B8%AF%E5%8D%80&elementName=WeatherDescription',
-        "萬華區": 'https://opendata.cwa.gov.tw/api/v1/rest/datastore/F-D0047-061?Authorization=CWA-EC987A54-DB8B-4E1A-AD8E-C775D2258D57&locationName=%E8%90%AC%E8%8F%AF%E5%8D%80&elementName=WeatherDescription',
-        "信義區": 'https://opendata.cwa.gov.tw/api/v1/rest/datastore/F-D0047-061?Authorization=CWA-EC987A54-DB8B-4E1A-AD8E-C775D2258D57&locationName=%E4%BF%A1%E7%BE%A9%E5%8D%80&elementName=WeatherDescription',
-        "文山區": 'https://opendata.cwa.gov.tw/api/v1/rest/datastore/F-D0047-061?Authorization=CWA-EC987A54-DB8B-4E1A-AD8E-C775D2258D57&locationName=%E6%96%87%E5%B1%B1%E5%8D%80&elementName=WeatherDescription'
-        // Your URL mappings...
+async function getService(appName: string): Promise<{message: string} | null> {
+    const serviceUrls: { [key: string]: string } = {
+        "申辦服務": 'https://taipei-pass-service.vercel.app/',
+        "市民儀表板": 'https://dashboard.gov.taipei/',
+        "找地點": 'https://taipei-pass-service.vercel.app/surrounding-service/'
     };
 
-    const weatherUrl = locationWeatherUrls[locationName];
-    if (!weatherUrl) {
+    const serviceUrl = serviceUrls[appName];
+    if (!serviceUrl) {
         return {
-            message: `Sorry, I couldn't find weather data for the location: ${locationName}.`
+            message: `Sorry, I could not find service name ${appName}`
         };
     }
+    
+    return {
+        message: `Here's the service you are looking for: ${serviceUrl}`
+    };
+}
 
+async function getWeather(): Promise<BotResponse> {
+    const url = 'https://opendata.cwa.gov.tw/api/v1/rest/datastore/F-C0032-001?Authorization=CWA-EC987A54-DB8B-4E1A-AD8E-C775D2258D57&locationName=%E8%87%BA%E5%8C%97%E5%B8%82&elementName='; // Replace with actual weather API URL
     try {
-        const response = await fetch(weatherUrl);
+        const response = await fetch(url);
         if (!response.ok) {
-            throw new Error(`Network response was not ok: ${response.statusText}`);
+            throw new Error(`Error fetching weather data: ${response.statusText}`);
         }
-
-        const data: WeatherForecast = await response.json();
-
-        const weatherDetails = data.records.locations.map((locationSet) => {
-            return locationSet.location.map((location) => {
-                const weatherElement = location.weatherElement.find(
-                    (element) => element.elementName === 'WeatherDescription'
-                );
-
-                const forecastTimes = weatherElement?.time.map((time) => {
-                    const startTime = time.startTime;
-                    const endTime = time.endTime;
-                    const weatherDescription = time.elementValue[0].value;
-
-                    return `From ${startTime} to ${endTime}, the weather in ${locationName} is expected to be: ${weatherDescription}.`;
-                });
-
-                return forecastTimes?.join('\n') || `No weather data available for ${locationName}.`;
-            }).join('\n');
-        }).join('\n');
-
+        const data = await response.json();
+        const weatherDetails = data.records.location.map((location) => {
+            const weatherElement = location.weatherElement.find(
+                (element) => element.elementName === 'Wx'
+            );
+            const forecastTimes = weatherElement?.time.map((time) => {
+                return `From ${time.startTime} to ${time.endTime}, the weather in ${location.locationName} is expected to be ${time.parameter.parameterName}.`;
+            });
+            return forecastTimes?.join('\n') || `No weather data available for ${location.locationName}.`;
+        });
         return {
-            message: weatherDetails,
+            message: weatherDetails.join('\n'),
             data: data
         };
     } catch (error) {
-        console.error('Failed to fetch or process weather data:', error);
+        console.error("Error fetching weather:", error);
         return {
-            message: 'Sorry, I could not fetch the weather data. Please try again later.'
+            message: "Sorry, I couldn't fetch the weather data."
         };
     }
 }
@@ -188,9 +174,7 @@ async function fetchWeatherData(locationName: string): Promise<BotResponse> {
 
 
 
-console.log(fetchWeatherData("大安區"))
-
-async function findRentableStation(): Promise<YouBikeDataWithDistance | null> {
+async function findRentableStation(k: number): Promise<YouBikeDataWithDistance[] | null> {
     try {
         initGeolocation()
         return await getNearestRentableStation(k);
@@ -239,15 +223,30 @@ async function searchGoogle(query: string): Promise<any | null> {
     }
 }
 const functionDeclarations = [
+{
+    name: "getService",
+    description: "Give the service URL for the requested app based on user queries.",
+    parameters: {
+        type: "object", 
+        properties: {
+            appName: {
+                type: "string",
+                description: "The name of the service or app the user is requesting."
+            }
+        },
+    }
+},
+
+
     {
-        name: "fetchWeatherData",
+        name: "getWeather",
         description: "Get the current weather forecast, including temperature and condition.",
         parameters: {
-            type: "object",
+            type: "object", 
             properties: {
-                query: {
+                dummy: {
                     type: "string",
-                    description: "This query is the location where the user wants to know the weather about. Please note that it is in traditional chinese."
+                    description: "This parameter is not used but is required by the API."
                 }
             }
         }
@@ -329,7 +328,8 @@ const functions = {
     findNearestMetroStation,
     // findDistance
     searchGoogle,
-    fetchWeatherData,
+    getWeather,
+    getService,
 };
 
 const genAI = new GoogleGenerativeAI(apiKey);
@@ -372,7 +372,18 @@ const sendMessage = async () => {
                                 location: null
                             };
                         }
-                    } else {
+                    } else if(call.name === 'getUrl'){
+                        const appName = call.args['appName'];
+            if (appName) {
+                const data = await functions[call.name](appName);
+                return {
+                    name: call.name,
+                    data: data,
+                    location: null
+                };
+            }
+                    }
+                        else {
                         console.log(call.args)
                         const data = await functions[call.name as keyof typeof functions](call.args['k']);
                         console.log(data)
