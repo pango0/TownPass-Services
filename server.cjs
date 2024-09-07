@@ -66,6 +66,7 @@ app.get('/trash', async (req, res) => {
                         departureTime: row['離開時間'],
                         longitude: parseFloat(row['經度']),
                         latitude: parseFloat(row['緯度']),
+                        title: '時間：' + row['抵達時間'] + '-' + row['離開時間'],
                     });
                 })
                 .on('end', () => resolve())

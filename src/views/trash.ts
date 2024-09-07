@@ -9,6 +9,7 @@ export interface TrashCarData {
     arrivalTime: string;
     departureTime: string;
     distance: number;
+    title: string;
 }
 
 let userLatitude: number | null = null;
