@@ -79,7 +79,7 @@ import { getDistance } from './distance';
 import { googleSearch } from './search';
 import { fetchWeatherData, BotResponse } from './weather';
 import { TrashCarData, getNearestTrashCarLocations } from './trash';
-
+import { fetchMetroGraphData, dijkstra, buildGraph, Route } from './metroS2S';
 let userLatitude: number | null = null;
 let userLongitude: number | null = null;
 
@@ -115,7 +115,7 @@ function initGeolocation(): Promise<void> {
     });
 }
 
-const apiKey = import.meta.env.VITE_GOOGLE_API_KEY;
+
 const userInput = ref('');
 const chatHistory = ref<
     Array<{
@@ -317,10 +317,17 @@ const functions = {
     findTrashCarLocation
 };
 
-const genAI = new GoogleGenerativeAI(apiKey);
-const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash", systemInstruction: "You are the assistant of Taipei City called '台北通智慧助理', You answer questions in traditional chinese" });
-let chat = model.startChat({ tools: [{ functionDeclarations }] });
+const apiKey = import.meta.env.VITE_OPENAI_API_KEY;
 
+//  async function hhh(){
+//     const data = await fetchMetroGraphData()
+//     console.log(data)
+//     const graph = buildGraph(data)
+//     console.log('graph', graph)
+//     const result = dijkstra(graph, 'BL23', 'BL22')
+//     console.log(result)
+// }
+// hhh()
 const renderMarkdown = (text: string) => {
     return marked(text);
 };
@@ -334,89 +341,93 @@ const sendMessage = async () => {
     userInput.value = '';
     await nextTick();
     scrollToBottom();
-
+    console.log(query)
     try {
-        const result = await chat.sendMessage(query);
-        const aiResponse = result.response;
-        const text = aiResponse.text();
-        const functionCalls = aiResponse.functionCalls();
+        // Prepare the payload for OpenAI API
+        const messages = [
+            { role: 'system', content: '你是一位台北市的助理，你叫做"台北通智慧助理". 請用繁體中文回答問題. ' },
+            { role: 'user', content: query }
+        ];
+
+        const body = {
+            model: 'gpt-4o',
+            messages: messages,
+            functions: functionDeclarations, // Pass any function declarations
+            function_call: 'auto', // Let the model decide when to call a function
+            stream: true,
+        };
+
+        // Call OpenAI API
+        const response = await fetch('https://api.openai.com/v1/chat/completions', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${apiKey}`
+            },
+            body: JSON.stringify(body)
+        });
+        console.log('response',response)
+        const result = await response.json();
+        console.log('result',result)
+        const aiResponse = result.choices[0].message;
+        const text = aiResponse.content;
+        const functionCall = aiResponse.function_call;
         console.log(text);
-        console.log(functionCalls);
-        console.log(aiResponse.usageMetadata);
-        if (functionCalls && functionCalls.length > 0) {
-            const functionResults = await Promise.all(functionCalls.map(async (call) => {
-                if (call.name in functions) {
-                    console.log(call.name)
-                    if (call.name === 'searchGoogle') {
-                        const query = call.args['query'];
-                        if (query) {
-                            const data = await functions[call.name](query);
-                            return {
-                                name: call.name,
-                                data: data,
-                                locations: []
-                            };
-                        }
-                    } else if (call.name === 'getPosition') {
-                        const data = await functions[call.name]();
-                        return {
-                            name: call.name,
-                            data: data,
-                            locations: []
-                        }
-                    } else {
-                        console.log(call.args)
-                        const data = await functions[call.name as keyof typeof functions](call.args['k']);
-                        console.log('Data content:', data)
-                        console.log('Type of data:', typeof data);
-                        const dataArray = Array.isArray(data) ? data : [data];
-                        return {
-                            name: call.name,
-                            data: data,
-                            locations: dataArray
-                                .map(item => (item.latitude !== undefined && item.longitude !== undefined) ? {
-                                    functionName: call.name,
-                                    latitude: item.latitude,
-                                    longitude: item.longitude,
-                                } : null)
-                                .filter(item => item !== null),
-                        };
-                    }
+        console.log(functionCall);
+
+        if (functionCall) {
+            // Process function calls
+            const functionName = functionCall.name;
+            const functionArgs = JSON.parse(functionCall.arguments);
+
+            if (functionName in functions) {
+                let functionResult;
+                
+                if (functionName === 'searchGoogle' && functionArgs.query) {
+                    functionResult = await functions[functionName](functionArgs.query);
+                } else if (functionName === 'getPosition') {
+                    functionResult = await functions[functionName]();
+                } else {
+                    functionResult = await functions[functionName](functionArgs.k);
                 }
-                return null;
-            }));
 
-            const validResults = functionResults
-                .filter((result): result is {
-                    name: string;
-                    data: any
-                    locations: Array<{
-                        functionName: string;
-                        latitude: number;
-                        longitude: number;
-                    }>
-                } => result !== null);
+                const locations = Array.isArray(functionResult) ? functionResult.map(item => ({
+                    functionName,
+                    latitude: item.latitude,
+                    longitude: item.longitude,
+                })) : [];
 
-            if (validResults.length > 0) {
-                const followUpResult = await chat.sendMessage(JSON.stringify(validResults));
+                // Send function result back to chat model
+                const followUpResult = await fetch('https://api.openai.com/v1/chat/completions', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': `Bearer ${apiKey}`
+                    },
+                    body: JSON.stringify({
+                        model: 'gpt-4',
+                        messages: [
+                            { role: 'assistant', content: query+JSON.stringify(functionResult)+'請用繁體中文回答' }
+                        ],
+                        stream: true,
+                    })
+                });
+
+                const followUpResponse = await followUpResult.json();
                 chatHistory.value.push({
                     id: Date.now(),
                     isUser: false,
-                    content: followUpResult.response.text(),
-                    locations: validResults.flatMap(res => res.locations)
+                    content: followUpResponse.choices[0].message.content,
+                    locations: locations
                 });
-            } else {
-                // console.log("no tools used")
-                chatHistory.value.push({ id: Date.now(), isUser: false, content: text, locations: [] });
             }
         } else {
-            console.log('no tools used');
+            // No function calls were made
             chatHistory.value.push({ id: Date.now(), isUser: false, content: text, locations: [] });
         }
     } catch (error) {
         console.error('Error sending message:', error);
         chatHistory.value.push({ id: Date.now(), isUser: false, content: 'Sorry, an error occurred. Please try again.', locations: [] });
-        chat = model.startChat({ tools: [{ functionDeclarations }] });
     } finally {
         loading.value = false;
         await nextTick();
