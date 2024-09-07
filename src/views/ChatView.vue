@@ -6,29 +6,20 @@
                 <p class="font-semibold">{{ message.isUser ? '你' : '人工智慧助理' }}:</p>
                 <div v-if="message.isUser" class="mt-1">{{ message.content }}</div>
                 <div v-else v-html="renderMarkdown(message.content)" class="mt-1 prose prose-sm max-w-none"></div>
-                  <div class="maps-container">
+                <div class="maps-container">
                     <div class="maps-scroll-container" ref="scrollContainer" @scroll="updateActiveDot">
-                    <div v-for="(location, index) in message.locations" :key="location.latitude" class="map-item">
-                        <div class="map-title">
-                        <span>{{ location.title }}</span>
+                        <div v-for="(location, index) in message.locations" :key="location.latitude" class="map-item">
+                            <div class="map-title">
+                                <span>{{ location.title }}</span>
+                            </div>
+                            <iframe class="map-frame" loading="lazy" allowfullscreen
+                                referrerpolicy="no-referrer-when-downgrade"
+                                :src="`https://www.google.com/maps/embed/v1/directions?key=AIzaSyCpQnECnOpwD9-XT_Jah9o5qlqBHChW7IU&origin=${userLatitude},${userLongitude}&destination=${location.latitude},${location.longitude}&mode=walking`"></iframe>
                         </div>
-                        <iframe 
-                        class="map-frame" 
-                        loading="lazy"
-                        allowfullscreen 
-                        referrerpolicy="no-referrer-when-downgrade"
-                        :src="`https://www.google.com/maps/embed/v1/directions?key=AIzaSyCpQnECnOpwD9-XT_Jah9o5qlqBHChW7IU&origin=${userLatitude},${userLongitude}&destination=${location.latitude},${location.longitude}&mode=walking`"
-                        ></iframe>
-                    </div>
                     </div>
                     <div class="dot-indicators">
-                    <span 
-                        v-for="(_, index) in message.locations" 
-                        :key="index" 
-                        class="dot" 
-                        :class="{ 'active': activeDotIndex === index }"
-                        @click="scrollToMap(index)"
-                    ></span>
+                        <span v-for="(_, index) in message.locations" :key="index" class="dot"
+                            :class="{ 'active': activeDotIndex === index }" @click="scrollToMap(index)"></span>
                     </div>
                 </div>
                 <div v-if="message.suggestedService != null" class="mt-4">
@@ -472,7 +463,8 @@ const functionDeclarations = [
             properties: {
                 location: {
                     type: 'string',
-                    description: 'This is the location you want to know the weather.'
+                    description: '提供台北市的一個行政區',
+                    enum: ["大安區", "中正區", "北投區", "士林區", "內湖區", "中山區", "大同區", "松山區", "南港區", "萬華區", "信義區", "文山區"]
                 }
             }
         }
@@ -771,7 +763,7 @@ const sendMessage = async () => {
             latitude: number,
             longitude: number
         }> = [];
-        
+
         console.log(result);
 
         while (functionCall) {
@@ -961,44 +953,45 @@ onMounted(() => {
         transform: rotate(360deg);
     }
 }
-
-
 </style>
 <style scoped>
 .maps-container {
-  width: 100%;
-  overflow: hidden;
+    width: 100%;
+    overflow: hidden;
 }
 
 .maps-scroll-container {
-  display: flex;
-  overflow-x: auto;
-  scroll-snap-type: x mandatory;
-  -webkit-overflow-scrolling: touch;
-  scrollbar-width: none; /* Firefox */
-  -ms-overflow-style: none;  /* Internet Explorer 10+ */
+    display: flex;
+    overflow-x: auto;
+    scroll-snap-type: x mandatory;
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: none;
+    /* Firefox */
+    -ms-overflow-style: none;
+    /* Internet Explorer 10+ */
 }
 
-.maps-scroll-container::-webkit-scrollbar { 
-  display: none;  /* WebKit */
+.maps-scroll-container::-webkit-scrollbar {
+    display: none;
+    /* WebKit */
 }
 
 .map-item {
-  flex: 0 0 95%;
-  width: 100%;
-  scroll-snap-align: start;
-  padding: 10px;
+    flex: 0 0 95%;
+    width: 100%;
+    scroll-snap-align: start;
+    padding: 10px;
 }
 
 .map-title {
-  margin-bottom: 10px;
-  font-weight: bold;
+    margin-bottom: 10px;
+    font-weight: bold;
 }
 
 .map-frame {
-  width: 100%;
-  height: 300px;
-  border: none;
-  border-radius: 8px;
+    width: 100%;
+    height: 300px;
+    border: none;
+    border-radius: 8px;
 }
 </style>
