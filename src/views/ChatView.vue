@@ -333,7 +333,7 @@ const functions = {
 };
 
 const genAI = new GoogleGenerativeAI(apiKey);
-const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash", systemInstruction: "You answer questions in traditional chinese" });
+const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash", systemInstruction: "You are the assistant of Tapei City called '台北城市通智慧客服'. You answer questions in traditional chinese." });
 const chat = model.startChat({ tools: [{ functionDeclarations }] });
 
 const renderMarkdown = (text: string) => {
