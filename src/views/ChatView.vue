@@ -9,14 +9,15 @@
                 <div v-for="location in message.locations" :key="location.latitude" style="padding: 12px">
                     <div>
                         <span v-if="location.functionName === 'findNearestMetroStation'">捷運地圖：</span>
-                        <span
-                            v-else-if="location.functionName === 'findReturnableStation' || location.functionName === 'findRentableStation'">
+                        <span v-else-if="
+                            location.functionName === 'findReturnableStation' ||
+                            location.functionName === 'findRentableStation'
+                        ">
                             YouBike地圖：
                         </span>
                     </div>
 
-
-                    <iframe class="w-full h-[300px] rounded-lg" height="300" style="border:0" loading="lazy"
+                    <iframe class="w-full h-[300px] rounded-lg" height="300" style="border: 0" loading="lazy"
                         allowfullscreen referrerpolicy="no-referrer-when-downgrade"
                         :src="`https://www.google.com/maps/embed/v1/directions?key=AIzaSyCpQnECnOpwD9-XT_Jah9o5qlqBHChW7IU
     &origin=${userLatitude},${userLongitude}&destination=${location.latitude},${location.longitude}&mode=walking`"></iframe>
@@ -30,8 +31,8 @@
                     {{ query }}
                 </button>
             </div>
-            <div class="flex items-center">
-                <input v-model="userInput" @keyup.enter="sendMessage" :disabled="loading"
+            <form class="flex items-center" @submit="sendMessage">
+                <input v-model="userInput" :disabled="loading"
                     class="flex-grow h-10 px-4 border border-tiffany-blue rounded-full focus:outline-none focus:ring-2 focus:ring-tiffany-blue"
                     placeholder="輸入你的問題" />
                 <button @click="sendMessage" :disabled="loading"
@@ -47,7 +48,7 @@
                         </svg>
                     </template>
                 </button>
-            </div>
+            </form>
         </div>
     </div>
 </template>
@@ -59,7 +60,7 @@ import { marked } from 'marked';
 import {
     getNearestRentableStation,
     getNearestReturnableStation,
-    type YouBikeDataWithDistance
+    YouBikeDataWithDistance
 } from './youbike';
 import { getNearestMetroStation, getTimeBetweenStation, type MetroDataWithDistance } from './metro';
 import { getDistance } from './distance';
@@ -67,9 +68,11 @@ import { googleSearch } from './search';
 import { fetchWeatherData, type BotResponse } from './weather';
 import { type TrashCarData, getNearestTrashCarLocations } from './trash';
 import { useUserStore } from '../stores/user';
+import { getTransitRoute } from './route_planning';
 import { getCoordinatesByPlaceName } from './getCoordinates';
 const userStore = useUserStore();
 let userName = 'Guest';
+
 let userLatitude: number | null = null;
 let userLongitude: number | null = null;
 // async function hhh() {
@@ -117,7 +120,17 @@ function initGeolocation(): Promise<void> {
         }
     });
 }
+let origin: string = '';
+let destination: string = '';
+function fetchOriginDestination(message: string) {
+    const originMatch = message.match(/從\s*(\S+)/); // Match after "從"
+    const destinationMatch = message.match(/到\s*(\S+)/); // Match after "到"
 
+    origin = originMatch ? originMatch[1] : '';
+    destination = destinationMatch ? destinationMatch[1] : '';
+}
+
+const MapapiKey = import.meta.env.VITE_GoogleMap_API_KEY;;
 
 const userInput = ref('');
 const chatHistory = ref<
@@ -135,17 +148,31 @@ const chatHistory = ref<
 const loading = ref(false);
 const chatContainer = ref<HTMLElement | null>(null);
 
-async function getWeather(): Promise<BotResponse> {
+async function getWeather(locationName: string): Promise<BotResponse> {
     // Replace with actual weather API URL
     try {
-        initGeolocation();
-        return await fetchWeatherData();
+        // initGeolocation();
+        console.log(locationName)
+        return await fetchWeatherData(locationName);
     } catch (error) {
         console.error('Error fetching weather:', error);
         return {
             message: "Sorry, I couldn't fetch the weather data."
         };
     }
+}
+
+async function getServices(appName: string): Promise<{ text: string; url: string; }> {
+    const serviceUrls: { [key: string]: string } = {
+        "申辦服務": 'https://taipei-pass-service.vercel.app/',
+        "市民儀表板": 'https://dashboard.gov.taipei/',
+        "找地點": 'https://taipei-pass-service.vercel.app/surrounding-service/'
+    };
+
+    return {
+        text: appName,
+        url: serviceUrls[appName] || "https://townpass.taipei/"
+    };
 }
 
 async function findRentableStation(k: number): Promise<YouBikeDataWithDistance[] | null> {
@@ -217,7 +244,7 @@ async function searchGoogle(query: string): Promise<any | null> {
 
 async function findTrashCarLocation(k: number): Promise<TrashCarData[] | null> {
     try {
-        await initGeolocation();
+        initGeolocation();
         return await getNearestTrashCarLocations(k);
     } catch (error) {
         console.error('Error fetching trash car locations:', error);
@@ -225,16 +252,41 @@ async function findTrashCarLocation(k: number): Promise<TrashCarData[] | null> {
     }
 }
 
+async function fetchAllRoutesToDestination(message: string): Promise<void> {
+    fetchOriginDestination(message);
+    loading.value = true;
+    try {
+        const modes = ['driving', 'walking', 'bicycling', 'transit'];
+
+        const results = await Promise.all(
+            modes.map((mode) => getTransitRoute(origin, destination, mode, MapapiKey))
+        );
+
+        results.forEach((result, index) => {
+            chatHistory.value.push({
+                id: Date.now(),
+                isUser: false,
+                content: `交通方式（${modes[index]}）找到的路線：${JSON.stringify(result.routes)}`,
+                locations: []
+            });
+        });
+    } catch (error) {
+        console.error('Failed to fetch routes:', error);
+    } finally {
+        loading.value = false;
+    }
+}
+
 const functionDeclarations = [
     {
         name: 'getWeather',
-        description: 'This tool is used to get the current weather forecast, including temperature and condition.',
+        description: 'This tool is used to get a location\'s current weather forecast, including temperature and condition.',
         parameters: {
             type: 'object',
             properties: {
-                k: {
+                location: {
                     type: 'string',
-                    description: 'This parameter is not used but is required by the API.'
+                    description: 'This is the location you want to know the weather.'
                 }
             }
         }
@@ -263,7 +315,7 @@ const functionDeclarations = [
             properties: {
                 k: {
                     type: 'number',
-                    description: 'This parameter is the number of stations you want to retrieve.'
+                    description: 'This parameter is k.'
                 }
             },
             required: ['k']
@@ -271,7 +323,7 @@ const functionDeclarations = [
     },
     {
         name: 'findNearestMetroStation',
-        description: "This tool is used to get the kth nearest Metro station's data from the user.",
+        description: "Get the kth nearest Metro station's data, including the distance from the user.",
         parameters: {
             type: 'object',
             properties: {
@@ -341,7 +393,57 @@ const functionDeclarations = [
             required: ['station_1', 'station_2']
 
         }
-    }
+    },
+    {
+        name: 'fetchAllRoutesToDestination',
+        description: 'give the possible route from origin to destination',
+        parameters: {
+            type: 'object',
+            properties: {
+                message: {
+                    type: 'string',
+                    description: 'This parameter is used for get the complete query message of the user'
+                }
+            }
+        }
+    },
+    {
+        name: "getServices",
+        description: `取得服務的網址`,
+        parameters: {
+            type: "object",
+            properties: {
+                appName: {
+                    type: "string",
+                    enum: [
+                        '1999',
+                        '申辦服務',
+                        '有話要說',
+                        '臨櫃叫號',
+                        '網路投票',
+                        '市民儀表板',
+                        '意見調查',
+                        '警政服務',
+                        '里辦服務',
+                        '疫苗預約',
+                        '聯醫掛號',
+                        '台北電台',
+                        '親子館',
+                        '簡單森呼吸',
+                        '寵物安心遛',
+                        '用水服務',
+                        '民生物資',
+                        '圖書借閱',
+                        '找地點',
+                        '愛遊動物園',
+                        '智慧客服'
+                    ],
+                    description: "The name of the service the user is requesting."
+                }
+            },
+            required: ["appName"]
+        }
+    },
 ];
 
 const functions = {
@@ -353,23 +455,41 @@ const functions = {
     getWeather,
     findTrashCarLocation,
     findTimeBetweenStation,
-    getCoordinates
+    getCoordinates,
+    fetchAllRoutesToDestination,
+    getServices,
 };
 
 const apiKey = import.meta.env.VITE_OPENAI_API_KEY;
-//  async function hhh(){
-//     const data = await fetchMetroGraphData()
-//     console.log(data)
-//     const graph = buildGraph(data)
-//     console.log('graph', graph)
-//     const result = dijkstra(graph, 'BL23', 'BL22')
-//     console.log(result)
-// }
-// hhh()
+
 const renderMarkdown = (text: string) => {
     return marked(text);
 };
 
+const SYSTEM_PROMPT = `你是一位台北市的助理，你叫做「台北通智慧助理」. 你有以下服務：
+1999: 播打網路語音通話
+申辦服務: 線上申辦市政府服務個項目（市民）
+有話要說: 陳情系統
+臨櫃叫號: 臨櫃服務查看叫號、預約
+網路投票: 收集民意，促進民眾參與市政服務
+市民儀表板: 提供臺北市生活的重要數據
+意見調查: 了解民眾與台北市互動體驗調查
+警政服務: 提供線上、語音報案
+里辦服務: 提供居民更即時在地區里服務
+疫苗預約: 預約Covid-19、流感疫苗施打
+聯醫掛號: 北市聯合醫院各院區線上掛號
+台北電台: 線上即時收聽-臺北廣播電台
+親子館: 線上預約各區親子館活動報名
+簡單森呼吸: 提供綠化地圖資訊
+寵物安心遛: 提供寵物友善地圖資訊
+用水服務: 繳交水費、查詢或自報用水度數
+民生物資: 提供北市民生物資交易量與金額
+圖書借閱: 市立圖書館借閱服務
+愛遊動物園: 動物園區資訊導覽、線上地圖
+智慧客服: 台北通智慧客服機器人
+
+當使用者的輸入有關這些服務，你就要推薦他服務的網址。
+請用繁體中文回答問題.`;
 const sendMessage = async () => {
     if (userInput.value.trim() === '') return;
     loading.value = true;
@@ -382,8 +502,13 @@ const sendMessage = async () => {
     try {
         // Prepare the payload for OpenAI API
         const messages = [
-            { role: 'system', content: '你是一位台北市的助理，你叫做"台北通智慧助理". 請用繁體中文回答問題. ' },
-            { role: 'user', content: query }
+            {
+                role: 'system', content: SYSTEM_PROMPT
+            },
+            ...chatHistory.value.map(chat => ({
+                role: chat.isUser ? 'user' : 'assistant',
+                content: chat.content
+            })).slice(-5),
         ];
 
         const body = {
@@ -391,7 +516,6 @@ const sendMessage = async () => {
             messages: messages,
             functions: functionDeclarations, // Pass any function declarations
             function_call: 'auto', // Let the model decide when to call a function
-            // stream: true,
         };
 
         // Call OpenAI API
@@ -403,9 +527,9 @@ const sendMessage = async () => {
             },
             body: JSON.stringify(body)
         });
-        console.log('response',response)
+        console.log('response', response)
         const result = await response.json();
-        console.log('result',result)
+        console.log('result', result)
         const aiResponse = result.choices[0].message;
         const text = aiResponse.content;
         const functionCall = aiResponse.function_call;
@@ -418,11 +542,38 @@ const sendMessage = async () => {
 
             if (functionName in functions) {
                 let functionResult;
-                
+
                 if (functionName === 'searchGoogle' && functionArgs.query) {
                     functionResult = await functions[functionName](functionArgs.query);
                 } else if (functionName === 'getPosition') {
                     functionResult = await functions[functionName]();
+                } else if (functionName === 'getWeather') {
+                    functionResult = await functions[functionName](functionArgs.location)
+                } else if (functionName === 'fetchAllRoutesToDestination') {
+                    const modes = ['driving', 'walking', 'bicycling', 'transit'];
+                    const allRoutes = await Promise.all(
+                        modes.map(async (mode) => {
+                            try {
+                                const routeData = await functions[functionName](query);
+                                return {
+                                    mode: mode,
+                                    route: routeData
+                                };
+                            } catch (err) {
+                                console.error(`Error fetching route for ${mode}:`, err);
+                                return null;
+                            }
+                        })
+                    );
+
+                    const locations = allRoutes.flatMap((route) => {
+                        const legs = route?.route?.routes[0]?.legs[0];
+                        return legs ? [{ functionName, latitude: legs.end_location.lat, longitude: legs.end_location.lng }] : [];
+                    });
+
+                    functionResult = { name: functionName, data: allRoutes, locations };
+                } else if (functionName === 'getServices') {
+                    functionResult = await functions[functionName](functionArgs.appName);
                 } else if(functionName === 'findTimeBetweenStation'){
                     functionResult = await functions[functionName](functionArgs.station_1, functionArgs.station_2);
                 }else if(functionName === 'getCoordinates'){
@@ -438,6 +589,8 @@ const sendMessage = async () => {
                     longitude: item.longitude,
                 })) : [];
 
+                console.log(functionResult);
+
                 // Send function result back to chat model
                 const followUpResult = await fetch('https://api.openai.com/v1/chat/completions', {
                     method: 'POST',
@@ -448,9 +601,14 @@ const sendMessage = async () => {
                     body: JSON.stringify({
                         model: 'gpt-4o',
                         messages: [
-                            { role: 'assistant', content: query+JSON.stringify(functionResult)+'請用繁體中文回答' }
+                            { role: 'system', content: SYSTEM_PROMPT },
+                            ...chatHistory.value.map(chat => ({
+                                role: chat.isUser ? 'user' : 'system',
+                                content: chat.content
+                            })).slice(-5),
+                            ...(result.choices[0].message.content != null ? [{ role: 'assistant', content: result.choices[0].message.content }] : []),
+                            { role: 'assistant', content: '相關資訊：' + JSON.stringify(functionResult) }
                         ],
-                    //     stream: true,
                     })
                 });
 
@@ -487,18 +645,17 @@ const scrollToBottom = () => {
 
 onMounted(() => {
     userName = userStore.user?.realName ?? '';
-  console.log(userName);
+    console.log(userName);
     const welcomeMessage = `${userName}您好，請問需要什麼服務嗎？`;
-  chatHistory.value.push({
-    id: Date.now(),
-    isUser: false,
-    content: welcomeMessage,
-    locations: []
-  });
-  return{
-    message:"${welcomeMessage}"
-  };
-    scrollToBottom();
+    chatHistory.value.push({
+        id: Date.now(),
+        isUser: false,
+        content: welcomeMessage,
+        locations: []
+    });
+    return {
+        message: "${welcomeMessage}"
+    };
 });
 </script>
 
