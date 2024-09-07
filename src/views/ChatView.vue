@@ -351,7 +351,7 @@ const sendMessage = async () => {
             ...chatHistory.value.map(chat => ({
                 role: chat.isUser ? 'user' : 'assistant',
                 content: chat.content
-            })),
+            })).slice(-5),
         ];
 
         const body = {
@@ -415,7 +415,7 @@ const sendMessage = async () => {
                             ...chatHistory.value.map(chat => ({
                                 role: chat.isUser ? 'user' : 'system',
                                 content: chat.content
-                            })),
+                            })).slice(-5),
                             { role: 'user', content: '這是相關的資訊：' + JSON.stringify(functionResult) }
                         ],
                     })
