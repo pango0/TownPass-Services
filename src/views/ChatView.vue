@@ -176,7 +176,7 @@ function fetchOriginDestination(message: string) {
   destination = destinationMatch ? destinationMatch[1] : '';
 }
 
-const MapapiKey = 'AIzaSyDd0sVXtX4MCYSbXwA6Tx5dVRAhk-_HYJQ';
+const MapapiKey = import.meta.env.VITE_GoogleMap_API_KEY;;
 
 const userInput = ref('');
 const chatHistory = ref<
