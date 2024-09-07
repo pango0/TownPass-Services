@@ -45,7 +45,13 @@
                 </button>
             </div>
             <form class="flex items-center" @submit.prevent="sendMessage">
-                <button @click="toggleVoiceInput" class="bg-tiffany-blue p-2 rounded-full focus:outline-none mr-2 hover:bg-tiffany-blue-dark transition-colors flex items-center justify-center">
+                <button 
+                    @click="toggleVoiceInput" 
+                    :class="[
+                        'p-2 rounded-full focus:outline-none mr-2 flex items-center justify-center transition-colors',
+                        isRed ? 'bg-red-500' : 'bg-tiffany-blue hover:bg-tiffany-blue-dark'
+                    ]"
+                >
                     <img :src="recorderIcon" alt="Recorder Icon" class="h-6 w-6 filter-white" />
                 </button>
 
@@ -188,6 +194,7 @@ recognition.continuous = false;
 recognition.interimResults = true;
 
 const isListening = ref(false);
+const isRed = ref(false);
 let mediaStream = null;
 
 const GOOGLE_API_KEY = import.meta.env.VITE_GoogleMap_API_KEY;
@@ -264,6 +271,7 @@ async function transcribeAudio(base64Audio: string): Promise<string> {
 
 
 const toggleVoiceInput = async () => {
+    isRed.value = !isRed.value;
     if (isListening.value) {
         stopVoiceInput();
     } else {
