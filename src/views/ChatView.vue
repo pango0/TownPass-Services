@@ -584,6 +584,7 @@ const sendMessage = async () => {
                                 role: chat.isUser ? 'user' : 'system',
                                 content: chat.content
                             })).slice(-5),
+                            ...(result.choices[0].message.content != null ? [{ role: 'assistant', content: result.choices[0].message.content }] : []),
                             { role: 'assistant', content: '相關資訊：' + JSON.stringify(functionResult) }
                         ],
                     })
