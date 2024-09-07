@@ -55,9 +55,12 @@
                     <img :src="recorderIcon" alt="Recorder Icon" class="h-6 w-6 filter-white" />
                 </button>
 
-                <input v-model="userInput" :disabled="loading"
+                <input 
+                    v-model="userInput" 
+                    :disabled="loading"
+                    :placeholder="isListening ? '聆聽中...' : '輸入你的問題'"
                     class="flex-grow h-10 px-4 border border-tiffany-blue rounded-full focus:outline-none focus:ring-2 focus:ring-tiffany-blue"
-                    placeholder="輸入你的問題" />
+                />
                 <button @click="sendMessage" :disabled="loading"
                     class="ml-2 bg-tiffany-blue text-white h-10 w-10 rounded-full hover:bg-tiffany-blue-dark transition-colors flex items-center justify-center">
                     <template v-if="loading">
