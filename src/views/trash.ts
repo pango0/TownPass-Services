@@ -9,6 +9,7 @@ export interface TrashCarData {
     arrivalTime: string;
     departureTime: string;
     distance: number;
+    title: string;
 }
 
 function getDistance(lat1: number, lon1: number, lat2: number, lon2: number): number {
