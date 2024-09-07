@@ -1,9 +1,7 @@
-<!-- eslint-disable prettier-vue/prettier -->
-<!-- eslint-disable prettier-vue/prettier -->
 <template>
     <div class="flex flex-col h-screen max-w-2xl mx-auto bg-white shadow-lg rounded-lg overflow-hidden">
-        <!-- <header class="flex justify-between items-center bg-white p-4">
-            <h1 class="text-3xl font-bold text-tiffany-blue"></h1>
+        <header class="flex justify-between items-center bg-white p-4">
+            <h1 class="text-3xl font-bold text-tiffany-blue">人工智慧助理</h1>
             <router-link to="/settings" class="text-[#71b2c2] hover:text-tiffany-blue">
                 <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24"
                     stroke="currentColor">
@@ -13,7 +11,7 @@
                         d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
                 </svg>
             </router-link>
-        </header> -->
+        </header>
         <div class="flex-grow overflow-y-auto p-4 space-y-4" ref="chatContainer">
             <div v-for="message in chatHistory" :key="message.id" class="p-3 rounded-lg"
                 :class="message.isUser ? 'bg-tiffany-blue text-white' : 'bg-gray-100'">
@@ -24,7 +22,9 @@
                     <div>
                         <span v-if="location.functionName === 'findNearestMetroStation'">捷運地圖：</span>
                         <span
-                            v-else-if="location.functionName === 'findReturnableStation' || location.functionName === 'findRentableStation'">YouBike地圖：</span>
+                            v-else-if="location.functionName === 'findReturnableStation' || location.functionName === 'findRentableStation'">
+                            YouBike地圖：
+                        </span>
                     </div>
 
 
@@ -42,8 +42,8 @@
                     {{ query }}
                 </button>
             </div>
-            <form class="flex items-center" @submit.prevent="sendMessage">
-                <input v-model="userInput" :disabled="loading"
+            <div class="flex items-center">
+                <input v-model="userInput" @keyup.enter="sendMessage" :disabled="loading"
                     class="flex-grow h-10 px-4 border border-tiffany-blue rounded-full focus:outline-none focus:ring-2 focus:ring-tiffany-blue"
                     placeholder="輸入你的問題" />
                 <button @click="sendMessage" :disabled="loading"
@@ -59,7 +59,7 @@
                         </svg>
                     </template>
                 </button>
-            </form>
+            </div>
         </div>
     </div>
 </template>
@@ -67,22 +67,29 @@
 
 <script setup lang="ts">
 import { ref, onMounted, nextTick } from 'vue';
-import { GoogleGenerativeAI } from "@google/generative-ai";
+import { GoogleGenerativeAI } from '@google/generative-ai';
 import { marked } from 'marked';
-import { getNearestRentableStation, getNearestReturnableStation, YouBikeDataWithDistance } from './youbike';
+import {
+    getNearestRentableStation,
+    getNearestReturnableStation,
+    YouBikeDataWithDistance
+} from './youbike';
 import { getNearestMetroStation, MetroDataWithDistance } from './metro';
-import { getDistance } from './distance'
+import { getDistance } from './distance';
 import { googleSearch } from './search';
 import { fetchWeatherData } from './weather';
+import { fetchTrashCarData, TrashCarData, getNearestTrashCarLocations } from './trash';
+
 let userLatitude: number | null = null;
 let userLongitude: number | null = null;
 
 const commonQueries = ref([
-    "附近有哪裡可以租YouBike？",
-    "附近有哪裡可以還YouBike？",
-    "最近的捷運站在哪裡？",
-    "台北市有哪些景點推薦？",
-    "今天天氣如何？"
+    '附近有哪裡可以租YouBike？',
+    '附近有哪裡可以還YouBike？',
+    '最近的捷運站在哪裡？',
+    '台北市有哪些景點推薦？',
+    '今天天氣如何？',
+    '最近的垃圾車地點在哪裡？'
 ]);
 const sendCommonQuery = (query: string) => {
     userInput.value = query;
@@ -103,32 +110,35 @@ function initGeolocation(): Promise<void> {
                 }
             );
         } else {
-            reject(new Error("Geolocation is not supported by this browser."));
+            reject(new Error('Geolocation is not supported by this browser.'));
         }
     });
 }
 
 const apiKey = import.meta.env.VITE_GOOGLE_API_KEY;
 const userInput = ref('');
-const chatHistory = ref<Array<{
-    id: number;
-    isUser: boolean;
-    content: string;
-    locations: Array<{
-        functionName: string;
-        latitude: number;
-        longitude: number;
-    }>;
-}>>([]);
+const chatHistory = ref<
+    Array<{
+        id: number;
+        isUser: boolean;
+        content: string;
+        locations: Array<{
+            functionName: string;
+            latitude: number;
+            longitude: number;
+        }>;
+    }>
+>([]);
 const loading = ref(false);
 const chatContainer = ref<HTMLElement | null>(null);
 
-async function getWeather(): Promise<BotResponse> {// Replace with actual weather API URL
+async function getWeather(): Promise<BotResponse> {
+    // Replace with actual weather API URL
     try {
-        initGeolocation()
+        initGeolocation();
         return await fetchWeatherData();
     } catch (error) {
-        console.error("Error fetching weather:", error);
+        console.error('Error fetching weather:', error);
         return {
             message: "Sorry, I couldn't fetch the weather data."
         };
@@ -137,40 +147,40 @@ async function getWeather(): Promise<BotResponse> {// Replace with actual weathe
 
 async function findRentableStation(k: number): Promise<YouBikeDataWithDistance[] | null> {
     try {
-        initGeolocation()
+        initGeolocation();
         return await getNearestRentableStation(k);
     } catch (error) {
-        console.error("Error finding nearest rentable station:", error);
+        console.error('Error finding nearest rentable station:', error);
         return null;
     }
 }
 
 async function findReturnableStation(k: number): Promise<YouBikeDataWithDistance[] | null> {
     try {
-        initGeolocation()
+        initGeolocation();
         return await getNearestReturnableStation(k);
     } catch (error) {
-        console.error("Error finding nearest returnable station:", error);
+        console.error('Error finding nearest returnable station:', error);
         return null;
     }
 }
 
 async function findNearestMetroStation(k: number): Promise<MetroDataWithDistance[]> {
     try {
-        initGeolocation()
+        initGeolocation();
         return await getNearestMetroStation(k);
     } catch (error) {
-        console.error("Error finding nearest metro station:", error);
+        console.error('Error finding nearest metro station:', error);
         return null;
     }
 }
 
 async function findDistance(lat1: number, lon1: number): Promise<any | null> {
     try {
-        initGeolocation()
+        initGeolocation();
         return await getDistance(lat1, lon1, userLatitude, userLongitude);
     } catch (error) {
-        console.error("Error finding nearest metro station:", error);
+        console.error('Error finding nearest metro station:', error);
         return null;
     }
 }
@@ -179,70 +189,76 @@ async function searchGoogle(query: string): Promise<any | null> {
     try {
         return await googleSearch(query);
     } catch (error) {
-        console.error("Error searching Google:", error);
+        console.error('Error searching Google:', error);
         return null;
     }
 }
 
-async function getPosition(): Promise<{ latitude: number, longitude: number }> {
-    await initGeolocation();
-    return {
-        latitude: userLatitude,
-        longitude: userLongitude,
-    } as { latitude: number, longitude: number };
+async function findTrashCarLocation(k: number): Promise<TrashCarData[] | null> {
+    try {
+        await initGeolocation();
+        return await getNearestTrashCarLocations(k);
+    } catch (error) {
+        console.error('Error fetching trash car locations:', error);
+        return [];
+    }
 }
 
 const functionDeclarations = [
     {
-        name: "getWeather",
-        description: "Get the current weather forecast, including temperature and condition.",
+        name: 'getWeather',
+        description: 'Get the current weather forecast, including temperature and condition.',
         parameters: {
-            type: "object",
+            type: 'object',
             properties: {
                 k: {
-                    type: "string",
-                    description: "This parameter is not used but is required by the API."
+                    type: 'string',
+                    description: 'This parameter is not used but is required by the API.'
                 }
             }
         }
     },
     {
-        name: "findRentableStation",
-        description: "Get the kth nearest YouBike station's data where there are available bikes to rent, including the distance from the user.",
+        name: 'findRentableStation',
+        description:
+            "Get the kth nearest YouBike station's data where there are available bikes to rent, including the distance from the user.",
         parameters: {
-            type: "object", properties: {
+            type: 'object',
+            properties: {
                 k: {
-                    type: "number",
-                    description: "This parameter is k."
+                    type: 'number',
+                    description: 'This parameter is k.'
                 }
             },
-            required: ["k"]
+            required: ['k']
         }
     },
     {
-        name: "findReturnableStation",
-        description: "Get the kth nearest YouBike station's data where there are available vacancies to return the bikes, including the distance from the user.",
+        name: 'findReturnableStation',
+        description:
+            "Get the kth nearest YouBike station's data where there are available vacancies to return the bikes, including the distance from the user.",
         parameters: {
-            type: "object", properties: {
+            type: 'object',
+            properties: {
                 k: {
-                    type: "number",
-                    description: "This parameter is k."
+                    type: 'number',
+                    description: 'This parameter is k.'
                 }
             },
-            required: ["k"]
+            required: ['k']
         }
     },
     {
-        name: "findNearestMetroStation",
+        name: 'findNearestMetroStation',
         description: "Get the kth nearest Metro station's data, including the distance from the user.",
         parameters: {
-            type: "object", properties: {
+            type: 'object',
+            properties: {
                 k: {
-                    type: "number",
-                    description: "This parameter is k."
+                    type: 'number',
+                    description: 'This parameter is k.'
                 }
-            },
-            required: ["k"]
+            }
         }
     },
     // {
@@ -262,22 +278,32 @@ const functionDeclarations = [
     //     }
     // },
     {
-        name: "searchGoogle",
+        name: 'searchGoogle',
         description: "Tool to obtain information you don't already know.",
         parameters: {
-            type: "object",
+            type: 'object',
             properties: {
                 query: {
-                    type: "string",
-                    description: "The search query you want to use"
+                    type: 'string',
+                    description: 'The search query you want to use'
                 }
             },
-            required: ["query"]
+            required: ['query']
         }
     },
     {
-        name: "getPosition",
-        description: "Tool to obtain user current position."
+        name: 'findTrashCarLocation',
+        description:
+            'Get the kth nearest trash car location that is available today, including location and arrive time',
+        parameters: {
+            type: 'object',
+            properties: {
+                k: {
+                    type: 'number',
+                    description: 'This parameter is k.'
+                }
+            }
+        }
     }
 ];
 
@@ -288,11 +314,11 @@ const functions = {
     // findDistance
     searchGoogle,
     getWeather,
-    getPosition,
+    findTrashCarLocation
 };
 
 const genAI = new GoogleGenerativeAI(apiKey);
-const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash", systemInstruction: "You are Taipei assistant AI(城市通智能客服). You answer questions in traditional chinese" });
+const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash", systemInstruction: "You answer questions in traditional chinese" });
 let chat = model.startChat({ tools: [{ functionDeclarations }] });
 
 const renderMarkdown = (text: string) => {
@@ -314,8 +340,8 @@ const sendMessage = async () => {
         const aiResponse = result.response;
         const text = aiResponse.text();
         const functionCalls = aiResponse.functionCalls();
-        console.log(text)
-        console.log(functionCalls)
+        console.log(text);
+        console.log(functionCalls);
         console.log(aiResponse.usageMetadata);
         if (functionCalls && functionCalls.length > 0) {
             const functionResults = await Promise.all(functionCalls.map(async (call) => {
@@ -363,7 +389,7 @@ const sendMessage = async () => {
             const validResults = functionResults
                 .filter((result): result is {
                     name: string;
-                    data: any;
+                    data: any
                     locations: Array<{
                         functionName: string;
                         latitude: number;
@@ -371,28 +397,26 @@ const sendMessage = async () => {
                     }>
                 } => result !== null);
 
-            console.log(validResults);
-
             if (validResults.length > 0) {
                 const followUpResult = await chat.sendMessage(JSON.stringify(validResults));
                 chatHistory.value.push({
                     id: Date.now(),
                     isUser: false,
                     content: followUpResult.response.text(),
-                    locations: validResults.flatMap(res => res.locations),
+                    locations: validResults.flatMap(res => res.locations)
                 });
             } else {
                 // console.log("no tools used")
                 chatHistory.value.push({ id: Date.now(), isUser: false, content: text, locations: [] });
             }
         } else {
-            console.log("no tools used")
-
+            console.log('no tools used');
             chatHistory.value.push({ id: Date.now(), isUser: false, content: text, locations: [] });
         }
     } catch (error) {
         console.error('Error sending message:', error);
         chatHistory.value.push({ id: Date.now(), isUser: false, content: 'Sorry, an error occurred. Please try again.', locations: [] });
+        chat = model.startChat({ tools: [{ functionDeclarations }] });
         chat = model.startChat({ tools: [{ functionDeclarations }] });
     } finally {
         loading.value = false;
@@ -448,7 +472,7 @@ onMounted(() => {
 .loader {
     width: 20px;
     height: 20px;
-    border: 2px solid #FFF;
+    border: 2px solid #fff;
     border-bottom-color: transparent;
     border-radius: 50%;
     display: inline-block;
