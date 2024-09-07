@@ -78,7 +78,7 @@ import { getNearestMetroStation, MetroDataWithDistance } from './metro';
 import { getDistance } from './distance';
 import { googleSearch } from './search';
 import { fetchWeatherData } from './weather';
-import { fetchTrashCarData, TrashCarData, getNearestTrashCarLocations } from './trash';
+import { TrashCarData, getNearestTrashCarLocations } from './trash';
 
 let userLatitude: number | null = null;
 let userLongitude: number | null = null;

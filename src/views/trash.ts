@@ -61,7 +61,7 @@ function isTimeInFuture(departureTime: string): boolean {
   return departureDate > now;
 }
 
-export async function fetchTrashCarDataWithDistance(k: number): Promise<TrashCarData[]> {
+export async function fetchTrashCarData(k: number): Promise<TrashCarData[]> {
   try {
     await initGeolocation();
 
