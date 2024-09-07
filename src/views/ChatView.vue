@@ -348,7 +348,10 @@ const sendMessage = async () => {
         // Prepare the payload for OpenAI API
         const messages = [
             { role: 'system', content: '你是一位台北市的助理，你叫做"台北通智慧助理". 請用繁體中文回答問題. ' },
-            { role: 'user', content: query }
+            ...chatHistory.value.map(chat => ({
+                role: chat.isUser ? 'user' : 'assistant',
+                content: chat.content
+            })),
         ];
 
         const body = {
@@ -356,7 +359,6 @@ const sendMessage = async () => {
             messages: messages,
             functions: functionDeclarations, // Pass any function declarations
             function_call: 'auto', // Let the model decide when to call a function
-            // stream: true,
         };
 
         // Call OpenAI API
@@ -368,9 +370,9 @@ const sendMessage = async () => {
             },
             body: JSON.stringify(body)
         });
-        console.log('response',response)
+        console.log('response', response)
         const result = await response.json();
-        console.log('result',result)
+        console.log('result', result)
         const aiResponse = result.choices[0].message;
         const text = aiResponse.content;
         const functionCall = aiResponse.function_call;
@@ -384,7 +386,7 @@ const sendMessage = async () => {
 
             if (functionName in functions) {
                 let functionResult;
-                
+
                 if (functionName === 'searchGoogle' && functionArgs.query) {
                     functionResult = await functions[functionName](functionArgs.query);
                 } else if (functionName === 'getPosition') {
@@ -409,9 +411,13 @@ const sendMessage = async () => {
                     body: JSON.stringify({
                         model: 'gpt-4o',
                         messages: [
-                            { role: 'assistant', content: query+JSON.stringify(functionResult)+'請用繁體中文回答' }
+                            { role: 'system', content: '你是一位台北市的助理，你叫做"台北通智慧助理". 請用繁體中文回答問題. ' },
+                            ...chatHistory.value.map(chat => ({
+                                role: chat.isUser ? 'user' : 'system',
+                                content: chat.content
+                            })),
+                            { role: 'user', content: '這是相關的資訊：' + JSON.stringify(functionResult) }
                         ],
-                    //     stream: true,
                     })
                 });
 
@@ -448,17 +454,17 @@ const scrollToBottom = () => {
 
 onMounted(() => {
     userName = userStore.user?.realName ?? '';
-  console.log(userName);
+    console.log(userName);
     const welcomeMessage = `${userName}您好，請問需要什麼服務嗎？`;
-  chatHistory.value.push({
-    id: Date.now(),
-    isUser: false,
-    content: welcomeMessage,
-    locations: []
-  });
-  return{
-    message:"${welcomeMessage}"
-  };
+    chatHistory.value.push({
+        id: Date.now(),
+        isUser: false,
+        content: welcomeMessage,
+        locations: []
+    });
+    return {
+        message: "${welcomeMessage}"
+    };
     scrollToBottom();
 });
 </script>
