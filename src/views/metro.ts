@@ -257,21 +257,8 @@ export async function getTimeBetweenStation(station_1: string, station_2: string
     const id_1 = mapping(station_1)
     const id_2 = mapping(station_2)
     try {
-        const url = "http://localhost:3000/";
-        const payload = {
-            StartSID: id_1,
-            EndSID: id_2,
-            Lang: "tw"
-        };
 
-        const response = await fetch(url, {
-            method: "POST",
-            headers: {
-                "Content-Type": "application/json"
-            },
-            body: JSON.stringify(payload),
-            mode: "no-cors" 
-        });
+        const response = await fetch(`http://localhost:3000/metro?StartSID=${id_1}&EndSID=${id_2}&Lang=tw`);
 
         if (!response.ok) {
             throw new Error(`HTTP error! status: ${response.status}`);

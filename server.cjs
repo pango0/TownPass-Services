@@ -133,6 +133,35 @@ app.get('/metro', async (req, res) => {
     }
 });
 
+app.get('/map', async (req, res) => {
+    const { origin, destination, mode, key } = req.query;
+    const queryParams = new URLSearchParams({
+        origin,
+        destination,
+        mode,
+        key
+    });
+
+    const url = `https://maps.googleapis.com/maps/api/directions/json?${queryParams.toString()}`;
+    const headers = {
+        'Accept': 'application/json, text/plain, */*',
+        'Content-Type': 'application/json',
+        'Origin': 'https://maps.googleapis.com',
+        'Referer': 'https://maps.googleapis.com',
+        'Sec-Fetch-Dest': 'empty',
+        'Sec-Fetch-Mode': 'cors',
+        'Sec-Fetch-Site': 'same-origin',
+    };
+
+    try {
+        const response = await axios.get(url, { headers: headers });
+        res.json(response.data)
+    } catch (error) {
+        console.log(error)
+        res.status(500).json({ error: 'Failed to map' });
+    }
+});
+
 const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => {
     console.log(`Server running on port ${PORT}`);

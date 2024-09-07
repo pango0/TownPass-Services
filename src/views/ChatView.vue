@@ -83,7 +83,7 @@ import { googleSearch } from './search';
 import { fetchWeatherData, type BotResponse } from './weather';
 import { type TrashCarData, getNearestTrashCarLocations } from './trash';
 import { useUserStore } from '../stores/user';
-import { getTransitRoute } from './route_planning';
+import { getTransitRoute, type TransitRoute } from './route_planning';
 import { getCoordinatesByPlaceName } from './getCoordinates';
 const userStore = useUserStore();
 let userName = 'Guest';
@@ -135,15 +135,8 @@ function initGeolocation(): Promise<void> {
         }
     });
 }
-let origin: string = '';
-let destination: string = '';
-function fetchOriginDestination(message: string) {
-    const originMatch = message.match(/從\s*(\S+)/); // Match after "從"
-    const destinationMatch = message.match(/到\s*(\S+)/); // Match after "到"
 
-    origin = originMatch ? originMatch[1] : '';
-    destination = destinationMatch ? destinationMatch[1] : '';
-}
+
 
 const MapapiKey = import.meta.env.VITE_GoogleMap_API_KEY;;
 
@@ -267,28 +260,22 @@ async function findTrashCarLocation(k: number): Promise<TrashCarData[] | null> {
     }
 }
 
-async function fetchAllRoutesToDestination(message: string): Promise<void> {
-    fetchOriginDestination(message);
+async function fetchAllRoutesToDestination(origin: string, destination: string, mode: string): Promise<TransitRoute | null> {
     loading.value = true;
     try {
-        const modes = ['driving', 'walking', 'bicycling', 'transit'];
+        return await getTransitRoute(origin, destination, mode, MapapiKey);
 
-        const results = await Promise.all(
-            modes.map((mode) => getTransitRoute(origin, destination, mode, MapapiKey))
-        );
-
-        results.forEach((result, index) => {
-            chatHistory.value.push({
-                id: Date.now(),
-                isUser: false,
-                content: `交通方式（${modes[index]}）找到的路線：${JSON.stringify(result.routes)}`,
-                locations: []
-            });
-        });
+        // results.forEach((result, index) => {
+        //     chatHistory.value.push({
+        //         id: Date.now(),
+        //         isUser: false,
+        //         content: `交通方式（${modes[index]}）找到的路線：${JSON.stringify(result.routes)}`,
+        //         locations: []
+        //     });
+        // });
     } catch (error) {
-        console.error('Failed to fetch routes:', error);
-    } finally {
-        loading.value = false;
+        console.error('Error fetching route:', error);
+        return null;
     }
 }
 
@@ -392,7 +379,7 @@ const functionDeclarations = [
     {
         name: 'findTimeBetweenStation',
         description:
-            'Get the travel time between two metro stations.',
+            'Get the travel time and route between two metro stations, don\'t provide urls',
         parameters: {
             type: 'object',
             properties: {
@@ -411,15 +398,20 @@ const functionDeclarations = [
     },
     {
         name: 'fetchAllRoutesToDestination',
-        description: 'give the possible route from origin to destination',
+        description: '如果不是捷運站而且是兩個地點的查詢，使用這個工具',
         parameters: {
             type: 'object',
             properties: {
-                message: {
+                origin: {
                     type: 'string',
-                    description: 'This parameter is used for get the complete query message of the user'
+                    description: '起點名稱'
+                },
+                destination: {
+                    type: 'string',
+                    description: '終點名稱'
                 }
-            }
+            },
+            required: ['origin', 'destination']
         }
     },
     {
@@ -569,7 +561,7 @@ const sendMessage = async () => {
                     const allRoutes = await Promise.all(
                         modes.map(async (mode) => {
                             try {
-                                const routeData = await functions[functionName](query);
+                                const routeData = await functions[functionName](functionArgs.origin, functionArgs.destination, mode);
                                 return {
                                     mode: mode,
                                     route: routeData

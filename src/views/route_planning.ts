@@ -8,9 +8,13 @@ export async function getTransitRoute(
   mode: string,
   apiKey: string
 ): Promise<TransitRoute | null> {
-  const url = `https://maps.googleapis.com/maps/api/directions/json?origin=${encodeURIComponent(
-    origin
-  )}&destination=${encodeURIComponent(destination)}&mode=${mode}&key=${apiKey}`;
+  const queryParams = new URLSearchParams({
+    origin,
+    destination,
+    mode,
+    key: apiKey
+  });
+  const url = `http://localhost:3000/map?${queryParams.toString()}`;
 
   try {
     const response = await fetch(url);
