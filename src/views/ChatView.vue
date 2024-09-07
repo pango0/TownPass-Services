@@ -248,7 +248,7 @@ async function searchGoogle(query: string): Promise<any | null> {
 
 async function findTrashCarLocation(k: number): Promise<TrashCarData[] | null> {
     try {
-        await initGeolocation();
+        initGeolocation();
         return await getNearestTrashCarLocations(k);
     } catch (error) {
         console.error('Error fetching trash car locations:', error);
