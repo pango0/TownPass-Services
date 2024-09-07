@@ -341,11 +341,13 @@ const sendMessage = async () => {
                     } else {
                         console.log(call.args)
                         const data = await functions[call.name as keyof typeof functions](call.args['k']);
-                        console.log(data)
+                        console.log('Data content:', data)
+                        console.log('Type of data:', typeof data);
+                        const dataArray = Array.isArray(data) ? data : [data];
                         return {
                             name: call.name,
                             data: data,
-                            locations: data
+                            locations: dataArray
                                 .map(item => (item.latitude !== undefined && item.longitude !== undefined) ? {
                                     functionName: call.name,
                                     latitude: item.latitude,
