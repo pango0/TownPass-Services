@@ -1,7 +1,7 @@
 <template>
     <div class="flex flex-col h-screen max-w-2xl mx-auto bg-white shadow-lg rounded-lg overflow-hidden">
         <div class="flex-grow overflow-y-auto p-4 space-y-4" ref="chatContainer">
-            <div v-for="message in chatHistory" :key="message.id" class="p-3 rounded-lg"
+            <div v-for="message in chatHistory" :key="message.id" class="p-3 rounded-lg fade-in"
                 :class="message.isUser ? 'bg-tiffany-blue text-white' : 'bg-gray-100'">
                 <p class="font-semibold">{{ message.isUser ? '你' : '人工智慧助理' }}:</p>
                 <div v-if="message.isUser" class="mt-1">{{ message.content }}</div>
@@ -19,8 +19,7 @@
 
                     <iframe class="w-full h-[300px] rounded-lg" height="300" style="border: 0" loading="lazy"
                         allowfullscreen referrerpolicy="no-referrer-when-downgrade"
-                        :src="`https://www.google.com/maps/embed/v1/directions?key=AIzaSyCpQnECnOpwD9-XT_Jah9o5qlqBHChW7IU
-    &origin=${userLatitude},${userLongitude}&destination=${location.latitude},${location.longitude}&mode=walking`"></iframe>
+                        :src="`https://www.google.com/maps/embed/v1/directions?key=AIzaSyCpQnECnOpwD9-XT_Jah9o5qlqBHChW7IU&origin=${userLatitude},${userLongitude}&destination=${location.latitude},${location.longitude}&mode=walking`"></iframe>
                 </div>
             </div>
         </div>
@@ -53,6 +52,22 @@
     </div>
 </template>
 
+<style>
+/* Add this to your CSS file or within a <style> block */
+@keyframes fadeIn {
+    from {
+        opacity: 0;
+    }
+
+    to {
+        opacity: 1;
+    }
+}
+
+.fade-in {
+    animation: fadeIn 0.5s ease-in-out;
+}
+</style>
 
 <script setup lang="ts">
 import { ref, onMounted, nextTick } from 'vue';
