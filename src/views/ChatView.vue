@@ -6,29 +6,20 @@
                 <p class="font-semibold">{{ message.isUser ? '你' : '人工智慧助理' }}:</p>
                 <div v-if="message.isUser" class="mt-1">{{ message.content }}</div>
                 <div v-else v-html="renderMarkdown(message.content)" class="mt-1 prose prose-sm max-w-none"></div>
-                  <div class="maps-container">
+                <div class="maps-container">
                     <div class="maps-scroll-container" ref="scrollContainer" @scroll="updateActiveDot">
-                    <div v-for="(location, index) in message.locations" :key="location.latitude" class="map-item">
-                        <div class="map-title">
-                        <span>{{ location.title }}</span>
+                        <div v-for="(location, index) in message.locations" :key="location.latitude" class="map-item">
+                            <div class="map-title">
+                                <span>{{ location.title }}</span>
+                            </div>
+                            <iframe class="map-frame" loading="lazy" allowfullscreen
+                                referrerpolicy="no-referrer-when-downgrade"
+                                :src="`https://www.google.com/maps/embed/v1/directions?key=AIzaSyCpQnECnOpwD9-XT_Jah9o5qlqBHChW7IU&origin=${userLatitude},${userLongitude}&destination=${location.latitude},${location.longitude}&mode=walking`"></iframe>
                         </div>
-                        <iframe 
-                        class="map-frame" 
-                        loading="lazy"
-                        allowfullscreen 
-                        referrerpolicy="no-referrer-when-downgrade"
-                        :src="`https://www.google.com/maps/embed/v1/directions?key=AIzaSyCpQnECnOpwD9-XT_Jah9o5qlqBHChW7IU&origin=${userLatitude},${userLongitude}&destination=${location.latitude},${location.longitude}&mode=walking`"
-                        ></iframe>
-                    </div>
                     </div>
                     <div class="dot-indicators">
-                    <span 
-                        v-for="(_, index) in message.locations" 
-                        :key="index" 
-                        class="dot" 
-                        :class="{ 'active': activeDotIndex === index }"
-                        @click="scrollToMap(index)"
-                    ></span>
+                        <span v-for="(_, index) in message.locations" :key="index" class="dot"
+                            :class="{ 'active': activeDotIndex === index }" @click="scrollToMap(index)"></span>
                     </div>
                 </div>
                 <div v-if="message.suggestedService != null" class="mt-4">
@@ -54,12 +45,14 @@
                 </button>
             </div>
             <form class="flex items-center" @submit.prevent="sendMessage">
-                <button @click="toggleVoiceInput" class="bg-gray-200 p-2 rounded-full focus:outline-none mr-2">
-                    <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
-                        <path
-                            d="M10 18a3 3 0 003-3h-6a3 3 0 003 3zM7 5a3 3 0 116 0v4a3 3 0 11-6 0V5zm5 8a5 5 0 01-10 0v-1a1 1 0 012 0v1a3 3 0 006 0v-1a1 1 0 012 0v1z" />
+                <button @click="toggleVoiceInput" class="bg-tiffany-blue p-2 rounded-full focus:outline-none mr-2 hover:bg-tiffany-blue-dark transition-colors">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 text-white" fill="currentColor" viewBox="0 0 24 24">
+                        <path d="M12 14a3 3 0 003-3V5a3 3 0 10-6 0v6a3 3 0 003 3zm5-3a5 5 0 01-10 0h2a3 3 0 006 0h2zm1 3a7 7 0 01-14 0H2a9 9 0 0018 0h-2zM11 19v3h2v-3h-2z"/>
                     </svg>
                 </button>
+
+
+
                 <input v-model="userInput" :disabled="loading"
                     class="flex-grow h-10 px-4 border border-tiffany-blue rounded-full focus:outline-none focus:ring-2 focus:ring-tiffany-blue"
                     placeholder="輸入你的問題" />
@@ -471,7 +464,8 @@ const functionDeclarations = [
             properties: {
                 location: {
                     type: 'string',
-                    description: 'This is the location you want to know the weather.'
+                    description: '提供台北市的一個行政區',
+                    enum: ["大安區", "中正區", "北投區", "士林區", "內湖區", "中山區", "大同區", "松山區", "南港區", "萬華區", "信義區", "文山區"]
                 }
             }
         }
@@ -780,7 +774,7 @@ const sendMessage = async () => {
             latitude: number,
             longitude: number
         }> = [];
-        
+
         console.log(result);
 
         while (functionCall) {
@@ -970,44 +964,45 @@ onMounted(() => {
         transform: rotate(360deg);
     }
 }
-
-
 </style>
 <style scoped>
 .maps-container {
-  width: 100%;
-  overflow: hidden;
+    width: 100%;
+    overflow: hidden;
 }
 
 .maps-scroll-container {
-  display: flex;
-  overflow-x: auto;
-  scroll-snap-type: x mandatory;
-  -webkit-overflow-scrolling: touch;
-  scrollbar-width: none; /* Firefox */
-  -ms-overflow-style: none;  /* Internet Explorer 10+ */
+    display: flex;
+    overflow-x: auto;
+    scroll-snap-type: x mandatory;
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: none;
+    /* Firefox */
+    -ms-overflow-style: none;
+    /* Internet Explorer 10+ */
 }
 
-.maps-scroll-container::-webkit-scrollbar { 
-  display: none;  /* WebKit */
+.maps-scroll-container::-webkit-scrollbar {
+    display: none;
+    /* WebKit */
 }
 
 .map-item {
-  flex: 0 0 95%;
-  width: 100%;
-  scroll-snap-align: start;
-  padding: 10px;
+    flex: 0 0 95%;
+    width: 100%;
+    scroll-snap-align: start;
+    padding: 10px;
 }
 
 .map-title {
-  margin-bottom: 10px;
-  font-weight: bold;
+    margin-bottom: 10px;
+    font-weight: bold;
 }
 
 .map-frame {
-  width: 100%;
-  height: 300px;
-  border: none;
-  border-radius: 8px;
+    width: 100%;
+    height: 300px;
+    border: none;
+    border-radius: 8px;
 }
 </style>
