@@ -132,7 +132,7 @@ const sendCommonQuery = (query: string) => {
     sendMessage();
 };
 
-function initGeolocation(): Promise<void> {
+async function initGeolocation(): Promise<void> {
     return new Promise((resolve, reject) => {
         if (navigator.geolocation) {
             navigator.geolocation.getCurrentPosition(
@@ -176,15 +176,15 @@ const loading = ref(false);
 const chatContainer = ref<HTMLElement | null>(null);
 
 const recognition = new (window.SpeechRecognition || window.webkitSpeechRecognition)();
-recognition.lang = 'zh-TW'; 
-recognition.continuous = false; 
+recognition.lang = 'zh-TW';
+recognition.continuous = false;
 recognition.interimResults = true;
 
 const isListening = ref(false);
 let mediaStream = null;
 
 const GOOGLE_API_KEY = import.meta.env.VITE_GoogleMap_API_KEY;
- 
+
 async function startRecording() {
     try {
         const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
@@ -242,7 +242,7 @@ async function transcribeAudio(base64Audio: string): Promise<string> {
         });
 
         const data = await response.json();
-        
+
         if (response.ok && data.results) {
             return data.results[0]?.alternatives[0]?.transcript || 'Transcription failed.';
         } else {
@@ -347,7 +347,7 @@ async function getServices(appName: string): Promise<{ text: string; url: string
     return desc[appName];
 }
 
-async function findRentableStation(k: number, lat:number, long:number): Promise<YouBikeDataWithDistance[] | null> {
+async function findRentableStation(k: number, lat: number, long: number): Promise<YouBikeDataWithDistance[] | null> {
     try {
         return await getNearestRentableStation(k, lat, long);
     } catch (error) {
@@ -356,7 +356,7 @@ async function findRentableStation(k: number, lat:number, long:number): Promise<
     }
 }
 
-async function findReturnableStation(k: number, lat:number, long:number): Promise<YouBikeDataWithDistance[] | null> {
+async function findReturnableStation(k: number, lat: number, long: number): Promise<YouBikeDataWithDistance[] | null> {
     try {
         return await getNearestReturnableStation(k, lat, long);
     } catch (error) {
@@ -393,7 +393,13 @@ async function findDistance(lat1: number, lon1: number): Promise<any | null> {
         return null;
     }
 }
-
+async function getPosition() {
+    await initGeolocation();
+    return {
+        latitude: userLatitude,
+        longitude: userLongitude,
+    }
+}
 async function getCoordinates(location: string) {
     try {
         return await getCoordinatesByPlaceName(location);
@@ -466,11 +472,11 @@ const functionDeclarations = [
                     type: 'number',
                     description: 'This parameter is the number of stations you want to retrieve.'
                 },
-                lat:{
+                lat: {
                     type: 'number',
                     description: 'This is the latitude of the location'
                 },
-                long:{
+                long: {
                     type: 'number',
                     description: 'This is the longtitude of the location'
                 }
@@ -489,11 +495,11 @@ const functionDeclarations = [
                     type: 'number',
                     description: 'This parameter is k.'
                 },
-                lat:{
+                lat: {
                     type: 'number',
                     description: 'This is the latitude of the location'
                 },
-                long:{
+                long: {
                     type: 'number',
                     description: 'This is the longtitude of the location'
                 }
@@ -511,17 +517,21 @@ const functionDeclarations = [
                     type: 'number',
                     description: 'This parameter is the number of stations you want to retrieve.'
                 },
-                lat:{
+                lat: {
                     type: 'number',
                     description: 'This parameter is the latitude of the location'
                 },
-                long:{
+                long: {
                     type: 'number',
                     description: 'This parameter is the longtitude of the location'
                 }
             },
             required: ['k', 'lat', 'long']
         }
+    },
+    {
+        name: "getPosition",
+        description: "取得目前位置",
     },
     {
         name: "getCoordinates",
@@ -666,7 +676,8 @@ const functions = {
     getCoordinates,
     fetchAllRoutesToDestination,
     getServices,
-    get_db
+    get_db,
+    getPosition,
 };
 
 const apiKey = import.meta.env.VITE_OPENAI_API_KEY;
@@ -727,7 +738,7 @@ const sendMessage = async () => {
         };
 
         // Call OpenAI API
-        const response = await fetch('https://api.openai.com/v1/chat/completions', {
+        let response = await fetch('https://api.openai.com/v1/chat/completions', {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
@@ -735,115 +746,123 @@ const sendMessage = async () => {
             },
             body: JSON.stringify(body)
         });
-        console.log('response', response)
-        const result = await response.json();
-        console.log('result', result)
-        const aiResponse = result.choices[0].message;
-        const text = aiResponse.content;
-        const functionCall = aiResponse.function_call;
-        console.log(text);
-        console.log(functionCall);
+        let result = await response.json();
+        let functionCall = result.choices[0].message.function_call;
         let suggestedService = null;
-        if (functionCall) {
+        let tmpChatHistory = [];
+        let locations: Array<{
+            title: string,
+            latitude: number,
+            longitude: number
+        }> = [];
+        
+        console.log(result);
+
+        while (functionCall) {
             // Process function calls
             const functionName = functionCall.name;
             const functionArgs = JSON.parse(functionCall.arguments);
 
-            if (functionName in functions) {
-                let functionResult;
+            let functionResult;
 
-                if (functionName === 'searchGoogle' && functionArgs.query) {
-                    functionResult = await functions[functionName](functionArgs.query);
-                } else if (functionName === 'getPosition') {
-                    functionResult = await functions[functionName]();
-                } else if (functionName === 'getWeather') {
-                    functionResult = await functions[functionName](functionArgs.location)
-                } else if (functionName === 'fetchAllRoutesToDestination') {
-                    const modes = ['driving', 'walking', 'bicycling', 'transit'];
-                    const allRoutes = await Promise.all(
-                        modes.map(async (mode) => {
-                            try {
-                                const routeData = await functions[functionName](functionArgs.origin, functionArgs.destination, mode);
-                                return {
-                                    mode: mode,
-                                    route: routeData
-                                };
-                            } catch (err) {
-                                console.error(`Error fetching route for ${mode}:`, err);
-                                return null;
-                            }
-                        })
-                    );
-
-                    const locations = allRoutes.flatMap((route) => {
-                        const legs = route?.route?.routes[0]?.legs[0];
-                        return legs ? [{ title: '路線圖', latitude: legs.end_location.lat, longitude: legs.end_location.lng }] : [];
-                    });
-
-                    functionResult = { name: functionName, data: allRoutes, locations };
-                } else if (functionName === 'getServices') {
-                    functionResult = await functions[functionName](functionArgs.appName);
-                    suggestedService = getServiceInfo(functionArgs.appName);
-                } else if (functionName === 'findTimeBetweenStation') {
-                    functionResult = await functions[functionName](functionArgs.station_1, functionArgs.station_2);
-                } else if (functionName === 'getCoordinates') {
-                    functionResult = await functions[functionName](functionArgs.location);
-                } else if (functionName === 'get_db') {
-                    functionResult = await functions[functionName](functionArgs.query);
-                }
-                else {
-                    functionResult = await functions[functionName](functionArgs.k, functionArgs.lat, functionArgs.long);
-                }
-
-                const locations = Array.isArray(functionResult) ? functionResult.map(item => ({
-                    title: item.title,
-                    latitude: item.latitude,
-                    longitude: item.longitude,
-                })).filter(item => item.title) : [];
-
-                console.log(functionResult);
-
-                // Send function result back to chat model
-                const followUpResult = await fetch('https://api.openai.com/v1/chat/completions', {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                        'Authorization': `Bearer ${apiKey}`
-                    },
-                    body: JSON.stringify({
-                        model: 'gpt-4o',
-                        messages: [
-                            { role: 'system', content: SYSTEM_PROMPT },
-                            ...chatHistory.value.map(chat => ({
-                                role: chat.isUser ? 'user' : 'system',
-                                content: chat.content
-                            })).slice(-5),
-                            ...(result.choices[0].message.content != null ? [{ role: 'assistant', content: result.choices[0].message.content }] : []),
-                            { role: 'assistant', content: '相關資訊：' + JSON.stringify(functionResult) }
-                        ],
-                        functions: functionDeclarations, // Pass any function declarations
-                        function_call: 'auto',
+            if (functionName === 'searchGoogle' && functionArgs.query) {
+                functionResult = await functions[functionName](functionArgs.query);
+            } else if (functionName === 'getPosition') {
+                functionResult = await functions[functionName]();
+            } else if (functionName === 'getWeather') {
+                functionResult = await functions[functionName](functionArgs.location)
+            } else if (functionName === 'fetchAllRoutesToDestination') {
+                const modes = ['driving', 'walking', 'bicycling', 'transit'];
+                const allRoutes = await Promise.all(
+                    modes.map(async (mode) => {
+                        try {
+                            const routeData = await functions[functionName](functionArgs.origin, functionArgs.destination, mode);
+                            return {
+                                mode: mode,
+                                route: routeData
+                            };
+                        } catch (err) {
+                            console.error(`Error fetching route for ${mode}:`, err);
+                            return null;
+                        }
                     })
-                });
-                
-                const followUpResponse = await followUpResult.json();
-                console.log(followUpResponse)
-                chatHistory.value.push({
+                );
 
-                    id: Date.now(),
-                    isUser: false,
-                    content: followUpResponse.choices[0].message.content,
-                    locations: locations,
-                    suggestedService
+                const locations = allRoutes.flatMap((route) => {
+                    const legs = route?.route?.routes[0]?.legs[0];
+                    return legs ? [{ title: '路線圖', latitude: legs.end_location.lat, longitude: legs.end_location.lng }] : [];
                 });
+
+                functionResult = { name: functionName, data: allRoutes, locations };
+            } else if (functionName === 'getServices') {
+                functionResult = await functions[functionName](functionArgs.appName);
+                suggestedService = getServiceInfo(functionArgs.appName);
+            } else if (functionName === 'findTimeBetweenStation') {
+                functionResult = await functions[functionName](functionArgs.station_1, functionArgs.station_2);
+            } else if (functionName === 'getCoordinates') {
+                functionResult = await functions[functionName](functionArgs.location);
+            } else if (functionName === 'get_db') {
+                functionResult = await functions[functionName](functionArgs.query);
             }
-        } else {
-            // No function calls were made
-            chatHistory.value.push({ id: Date.now(), isUser: false, content: text, locations: [] });
+            else {
+                functionResult = await functions[functionName](functionArgs.k, functionArgs.lat, functionArgs.long);
+            }
+
+            if (Array.isArray(functionResult)) {
+                locations = [
+                    ...locations,
+                    ...functionResult
+                        .map(item => ({
+                            title: item.title,
+                            latitude: item.latitude,
+                            longitude: item.longitude,
+                        }))
+                        .filter(item => item.title)
+                ]
+            }
+
+            console.log(functionResult);
+
+            if (result.choices[0].message.content != null) {
+                tmpChatHistory.push({ role: 'assistant', content: result.choices[0].message.content });
+            }
+            tmpChatHistory.push({ role: 'assistant', content: '相關資訊：' + JSON.stringify(functionResult) });
+
+            response = await fetch('https://api.openai.com/v1/chat/completions', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${apiKey}`
+                },
+                body: JSON.stringify({
+                    model: 'gpt-4o',
+                    messages: [
+                        { role: 'system', content: SYSTEM_PROMPT },
+                        ...chatHistory.value.map(chat => ({
+                            role: chat.isUser ? 'user' : 'system',
+                            content: chat.content
+                        })).slice(-5),
+                        ...tmpChatHistory
+                    ],
+                    functions: functionDeclarations, // Pass any function declarations
+                    function_call: 'auto',
+                })
+            });
+            result = await response.json();
+            functionCall = result.choices[0].message.function_call;
+
+            console.log(result);
         }
+        chatHistory.value.push({
+            id: Date.now(),
+            isUser: false,
+            content: result.choices[0].message.content,
+            locations: locations,
+            suggestedService
+        });
     } catch (error) {
         console.error('Error sending message:', error);
-        chatHistory.value.push({ id: Date.now(), isUser: false, content: 'Sorry, an error occurred. Please try again.', locations: [] });
+        chatHistory.value.push({ id: Date.now(), isUser: false, content: '抱歉出事啦！', locations: [] });
     } finally {
         loading.value = false;
         await nextTick();
