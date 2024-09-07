@@ -98,4 +98,8 @@ async function saveApiKey() {
 .focus\:ring-tiffany-blue:focus {
   --tw-ring-color: var(--tiffany-blue);
 }
+
+a {
+    color: var(--tiffany-blue);
+}
 </style>

@@ -1,37 +1,21 @@
 <template>
     <div class="flex flex-col h-screen max-w-2xl mx-auto bg-white shadow-lg rounded-lg overflow-hidden">
-        <header class="flex justify-between items-center bg-white p-4">
-            <h1 class="text-3xl font-bold text-tiffany-blue">人工智慧助理</h1>
-            <router-link to="/settings" class="text-[#71b2c2] hover:text-tiffany-blue">
-                <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24"
-                    stroke="currentColor">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                        d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                        d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
-                </svg>
-            </router-link>
-        </header>
         <div class="flex-grow overflow-y-auto p-4 space-y-4" ref="chatContainer">
-            <div v-for="message in chatHistory" :key="message.id" class="p-3 rounded-lg"
+            <div v-for="message in chatHistory" :key="message.id" class="p-3 rounded-lg fade-in"
                 :class="message.isUser ? 'bg-tiffany-blue text-white' : 'bg-gray-100'">
                 <p class="font-semibold">{{ message.isUser ? '你' : '人工智慧助理' }}:</p>
                 <div v-if="message.isUser" class="mt-1">{{ message.content }}</div>
                 <div v-else v-html="renderMarkdown(message.content)" class="mt-1 prose prose-sm max-w-none"></div>
                 <div v-for="location in message.locations" :key="location.latitude" style="padding: 12px">
                     <div>
-                        <span v-if="location.functionName === 'findNearestMetroStation'">捷運地圖：</span>
-                        <span
-                            v-else-if="location.functionName === 'findReturnableStation' || location.functionName === 'findRentableStation'">
-                            YouBike地圖：
+                        <span>
+                            {{ location.title }}
                         </span>
                     </div>
 
-
-                    <iframe class="w-full h-[300px] rounded-lg" height="300" style="border:0" loading="lazy"
+                    <iframe class="w-full h-[300px] rounded-lg" height="300" style="border: 0" loading="lazy"
                         allowfullscreen referrerpolicy="no-referrer-when-downgrade"
-                        :src="`https://www.google.com/maps/embed/v1/directions?key=AIzaSyCpQnECnOpwD9-XT_Jah9o5qlqBHChW7IU
-    &origin=${userLatitude},${userLongitude}&destination=${location.latitude},${location.longitude}&mode=walking`"></iframe>
+                        :src="`https://www.google.com/maps/embed/v1/directions?key=AIzaSyCpQnECnOpwD9-XT_Jah9o5qlqBHChW7IU&origin=${userLatitude},${userLongitude}&destination=${location.latitude},${location.longitude}&mode=walking`"></iframe>
                 </div>
             </div>
         </div>
@@ -42,8 +26,8 @@
                     {{ query }}
                 </button>
             </div>
-            <div class="flex items-center">
-                <input v-model="userInput" @keyup.enter="sendMessage" :disabled="loading"
+            <form class="flex items-center" @submit="sendMessage">
+                <input v-model="userInput" :disabled="loading"
                     class="flex-grow h-10 px-4 border border-tiffany-blue rounded-full focus:outline-none focus:ring-2 focus:ring-tiffany-blue"
                     placeholder="輸入你的問題" />
                 <button @click="sendMessage" :disabled="loading"
@@ -59,29 +43,62 @@
                         </svg>
                     </template>
                 </button>
-            </div>
+            </form>
         </div>
     </div>
 </template>
 
+<style>
+/* Add this to your CSS file or within a <style> block */
+@keyframes fadeIn {
+    from {
+        opacity: 0;
+    }
+
+    to {
+        opacity: 1;
+    }
+}
+
+.fade-in {
+    animation: fadeIn 0.5s ease-in-out;
+}
+</style>
 
 <script setup lang="ts">
 import { ref, onMounted, nextTick } from 'vue';
-import { GoogleGenerativeAI } from '@google/generative-ai';
 import { marked } from 'marked';
 import {
     getNearestRentableStation,
     getNearestReturnableStation,
     YouBikeDataWithDistance
 } from './youbike';
-import { getNearestMetroStation, MetroDataWithDistance } from './metro';
+import { getNearestMetroStation, getTimeBetweenStation, type MetroDataWithDistance } from './metro';
 import { getDistance } from './distance';
 import { googleSearch } from './search';
-import { fetchWeatherData, BotResponse } from './weather';
-import { TrashCarData, getNearestTrashCarLocations } from './trash';
+import { fetchWeatherData, type BotResponse } from './weather';
+import { type TrashCarData, getNearestTrashCarLocations } from './trash';
+import { useUserStore } from '../stores/user';
+import { getTransitRoute, type TransitRoute } from './route_planning';
+import { getCoordinatesByPlaceName } from './getCoordinates';
+const userStore = useUserStore();
+let userName = 'Guest';
 
 let userLatitude: number | null = null;
 let userLongitude: number | null = null;
+// async function hhh() {
+//     // Sample usage
+//     const metroNetwork: Line[] = await fetchMetroGraphData();
+//     const graph = buildGraph(metroNetwork);
+
+//     const startStationID = "R10";  // Example: Taipei Nangang Exhibition Center
+//     const endStationID = "G07";    // Example: Taipei Main Station
+
+//     const result = dijkstra(graph, startStationID, endStationID);
+//     console.log(`Shortest time: ${result.time} seconds`);
+//     console.log(`Path: ${result.path.join(" -> ")}`);
+// }
+// hhh()
 
 const commonQueries = ref([
     '附近有哪裡可以租YouBike？',
@@ -115,7 +132,10 @@ function initGeolocation(): Promise<void> {
     });
 }
 
-const apiKey = import.meta.env.VITE_GOOGLE_API_KEY;
+
+
+const MapapiKey = import.meta.env.VITE_GoogleMap_API_KEY;;
+
 const userInput = ref('');
 const chatHistory = ref<
     Array<{
@@ -123,7 +143,7 @@ const chatHistory = ref<
         isUser: boolean;
         content: string;
         locations: Array<{
-            functionName: string;
+            title: string;
             latitude: number;
             longitude: number;
         }>;
@@ -132,17 +152,31 @@ const chatHistory = ref<
 const loading = ref(false);
 const chatContainer = ref<HTMLElement | null>(null);
 
-async function getWeather(): Promise<BotResponse> {
+async function getWeather(locationName: string): Promise<BotResponse> {
     // Replace with actual weather API URL
     try {
-        initGeolocation();
-        return await fetchWeatherData();
+        // initGeolocation();
+        console.log(locationName)
+        return await fetchWeatherData(locationName);
     } catch (error) {
         console.error('Error fetching weather:', error);
         return {
             message: "Sorry, I couldn't fetch the weather data."
         };
     }
+}
+
+async function getServices(appName: string): Promise<{ text: string; url: string; }> {
+    const serviceUrls: { [key: string]: string } = {
+        "申辦服務": 'https://taipei-pass-service.vercel.app/',
+        "市民儀表板": 'https://dashboard.gov.taipei/',
+        "找地點": 'https://taipei-pass-service.vercel.app/surrounding-service/'
+    };
+
+    return {
+        text: appName,
+        url: serviceUrls[appName] || "https://townpass.taipei/"
+    };
 }
 
 async function findRentableStation(k: number): Promise<YouBikeDataWithDistance[] | null> {
@@ -165,7 +199,7 @@ async function findReturnableStation(k: number): Promise<YouBikeDataWithDistance
     }
 }
 
-async function findNearestMetroStation(k: number): Promise<MetroDataWithDistance[]> {
+async function findNearestMetroStation(k: number): Promise<MetroDataWithDistance[] | null> {
     try {
         initGeolocation();
         return await getNearestMetroStation(k);
@@ -175,12 +209,30 @@ async function findNearestMetroStation(k: number): Promise<MetroDataWithDistance
     }
 }
 
+async function findTimeBetweenStation(station_1: string, station_2: string): Promise<any | null> {
+    try{
+        return await getTimeBetweenStation(station_1, station_2);
+    }catch(error){
+        console.error('Error finding time between station:', error);
+        return null
+    }
+}
+
 async function findDistance(lat1: number, lon1: number): Promise<any | null> {
     try {
         initGeolocation();
         return await getDistance(lat1, lon1, userLatitude, userLongitude);
     } catch (error) {
         console.error('Error finding nearest metro station:', error);
+        return null;
+    }
+}
+
+async function getCoordinates(location: string) {
+    try{
+        return await getCoordinatesByPlaceName(location);
+    } catch (error){
+        console.error('Error finding coordinates:', error);
         return null;
     }
 }
@@ -196,7 +248,7 @@ async function searchGoogle(query: string): Promise<any | null> {
 
 async function findTrashCarLocation(k: number): Promise<TrashCarData[] | null> {
     try {
-        await initGeolocation();
+        initGeolocation();
         return await getNearestTrashCarLocations(k);
     } catch (error) {
         console.error('Error fetching trash car locations:', error);
@@ -204,16 +256,35 @@ async function findTrashCarLocation(k: number): Promise<TrashCarData[] | null> {
     }
 }
 
+async function fetchAllRoutesToDestination(origin: string, destination: string, mode: string): Promise<TransitRoute | null> {
+    loading.value = true;
+    try {
+        return await getTransitRoute(origin, destination, mode, MapapiKey);
+
+        // results.forEach((result, index) => {
+        //     chatHistory.value.push({
+        //         id: Date.now(),
+        //         isUser: false,
+        //         content: `交通方式（${modes[index]}）找到的路線：${JSON.stringify(result.routes)}`,
+        //         locations: []
+        //     });
+        // });
+    } catch (error) {
+        console.error('Error fetching route:', error);
+        return null;
+    }
+}
+
 const functionDeclarations = [
     {
         name: 'getWeather',
-        description: 'This tool is used to get the current weather forecast, including temperature and condition.',
+        description: 'This tool is used to get a location\'s current weather forecast, including temperature and condition.',
         parameters: {
             type: 'object',
             properties: {
-                k: {
+                location: {
                     type: 'string',
-                    description: 'This parameter is not used but is required by the API.'
+                    description: 'This is the location you want to know the weather.'
                 }
             }
         }
@@ -242,7 +313,7 @@ const functionDeclarations = [
             properties: {
                 k: {
                     type: 'number',
-                    description: 'This parameter is the number of stations you want to retrieve.'
+                    description: 'This parameter is k.'
                 }
             },
             required: ['k']
@@ -250,7 +321,7 @@ const functionDeclarations = [
     },
     {
         name: 'findNearestMetroStation',
-        description: "This tool is used to get the kth nearest Metro station's data from the user.",
+        description: "Get the kth nearest Metro station's data, including the distance from the user.",
         parameters: {
             type: 'object',
             properties: {
@@ -261,22 +332,18 @@ const functionDeclarations = [
             }
         }
     },
-    // {
-    //     name: "findDistance",
-    //     description: "This tool can retrieve the distance between a location and the user.",
-    //     parameters: {
-    //         type: "object", properties: {
-    //             lat1: {
-    //                 type: "number",
-    //                 description: "This parameter is the latitude of the location"
-    //             },
-    //             lon1: {
-    //                 type: "number",
-    //                 description: "This parameter is the longitude of the location"
-    //             }
-    //         }
-    //     }
-    // },
+    {
+        name: "getCoordinates",
+        description: "This tool can retrieve the coordinates of a location.",
+        parameters: {
+            type: "object", properties: {
+                location: {
+                    type: "string",
+                    description: "This parameter is the name of the location"
+                },
+            }
+        }
+    },
     {
         name: 'searchGoogle',
         description: "Tool to obtain information you don't already know.",
@@ -304,7 +371,82 @@ const functionDeclarations = [
                 }
             }
         }
-    }
+    },
+    {
+        name: 'findTimeBetweenStation',
+        description:
+            'Get the travel time and route between two metro stations, don\'t provide urls',
+        parameters: {
+            type: 'object',
+            properties: {
+                station_1: {
+                    type: 'string',
+                    description: 'This is the first station\'s name in traditional chinese'
+                },
+                station_2: {
+                    type: 'string',
+                    description: 'This is the second station\'s name in traditional chinese'
+                }
+            },
+            required: ['station_1', 'station_2']
+
+        }
+    },
+    {
+        name: 'fetchAllRoutesToDestination',
+        description: '如果不是捷運站而且是兩個地點的查詢，使用這個工具',
+        parameters: {
+            type: 'object',
+            properties: {
+                origin: {
+                    type: 'string',
+                    description: '起點名稱'
+                },
+                destination: {
+                    type: 'string',
+                    description: '終點名稱'
+                }
+            },
+            required: ['origin', 'destination']
+        }
+    },
+    {
+        name: "getServices",
+        description: `取得服務的網址`,
+        parameters: {
+            type: "object",
+            properties: {
+                appName: {
+                    type: "string",
+                    enum: [
+                        '1999',
+                        '申辦服務',
+                        '有話要說',
+                        '臨櫃叫號',
+                        '網路投票',
+                        '市民儀表板',
+                        '意見調查',
+                        '警政服務',
+                        '里辦服務',
+                        '疫苗預約',
+                        '聯醫掛號',
+                        '台北電台',
+                        '親子館',
+                        '簡單森呼吸',
+                        '寵物安心遛',
+                        '用水服務',
+                        '民生物資',
+                        '圖書借閱',
+                        '找地點',
+                        '愛遊動物園',
+                        '智慧客服'
+                    ],
+                    description: "The name of the service the user is requesting."
+                }
+            },
+            required: ["appName"]
+        }
+    },
 ];
 
 const functions = {
@@ -314,109 +456,180 @@ const functions = {
     // findDistance
     searchGoogle,
     getWeather,
-    findTrashCarLocation
+    findTrashCarLocation,
+    findTimeBetweenStation,
+    getCoordinates,
+    fetchAllRoutesToDestination,
+    getServices,
 };
 
-const genAI = new GoogleGenerativeAI(apiKey);
-const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash", systemInstruction: "You are the assistant of Taipei City called '台北通智慧助理', You answer questions in traditional chinese" });
-let chat = model.startChat({ tools: [{ functionDeclarations }] });
+const apiKey = import.meta.env.VITE_OPENAI_API_KEY;
 
 const renderMarkdown = (text: string) => {
     return marked(text);
 };
 
+const SYSTEM_PROMPT = `你是一位台北市的助理，你叫做「台北通智慧助理」. 你有以下服務：
+1999: 播打網路語音通話
+申辦服務: 線上申辦市政府服務個項目（市民）
+有話要說: 陳情系統
+臨櫃叫號: 臨櫃服務查看叫號、預約
+網路投票: 收集民意，促進民眾參與市政服務
+市民儀表板: 提供臺北市生活的重要數據
+意見調查: 了解民眾與台北市互動體驗調查
+警政服務: 提供線上、語音報案
+里辦服務: 提供居民更即時在地區里服務
+疫苗預約: 預約Covid-19、流感疫苗施打
+聯醫掛號: 北市聯合醫院各院區線上掛號
+台北電台: 線上即時收聽-臺北廣播電台
+親子館: 線上預約各區親子館活動報名
+簡單森呼吸: 提供綠化地圖資訊
+寵物安心遛: 提供寵物友善地圖資訊
+用水服務: 繳交水費、查詢或自報用水度數
+民生物資: 提供北市民生物資交易量與金額
+圖書借閱: 市立圖書館借閱服務
+愛遊動物園: 動物園區資訊導覽、線上地圖
+智慧客服: 台北通智慧客服機器人
+
+當使用者的輸入有關這些服務，你就要推薦他服務的網址。
+請用繁體中文回答問題.`;
 const sendMessage = async () => {
     if (userInput.value.trim() === '') return;
-
     loading.value = true;
     chatHistory.value.push({ id: Date.now(), isUser: true, content: userInput.value });
     const query = userInput.value;
     userInput.value = '';
     await nextTick();
     scrollToBottom();
-
+    console.log(query)
     try {
-        const result = await chat.sendMessage(query);
-        const aiResponse = result.response;
-        const text = aiResponse.text();
-        const functionCalls = aiResponse.functionCalls();
+        // Prepare the payload for OpenAI API
+        const messages = [
+            {
+                role: 'system', content: SYSTEM_PROMPT
+            },
+            ...chatHistory.value.map(chat => ({
+                role: chat.isUser ? 'user' : 'assistant',
+                content: chat.content
+            })).slice(-5),
+        ];
+
+        const body = {
+            model: 'gpt-4o',
+            messages: messages,
+            functions: functionDeclarations, // Pass any function declarations
+            function_call: 'auto', // Let the model decide when to call a function
+        };
+
+        // Call OpenAI API
+        const response = await fetch('https://api.openai.com/v1/chat/completions', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${apiKey}`
+            },
+            body: JSON.stringify(body)
+        });
+        console.log('response', response)
+        const result = await response.json();
+        console.log('result', result)
+        const aiResponse = result.choices[0].message;
+        const text = aiResponse.content;
+        const functionCall = aiResponse.function_call;
         console.log(text);
-        console.log(functionCalls);
-        console.log(aiResponse.usageMetadata);
-        if (functionCalls && functionCalls.length > 0) {
-            const functionResults = await Promise.all(functionCalls.map(async (call) => {
-                if (call.name in functions) {
-                    console.log(call.name)
-                    if (call.name === 'searchGoogle') {
-                        const query = call.args['query'];
-                        if (query) {
-                            const data = await functions[call.name](query);
-                            return {
-                                name: call.name,
-                                data: data,
-                                locations: []
-                            };
-                        }
-                    } else if (call.name === 'getPosition') {
-                        const data = await functions[call.name]();
-                        return {
-                            name: call.name,
-                            data: data,
-                            locations: []
-                        }
-                    } else {
-                        console.log(call.args)
-                        const data = await functions[call.name as keyof typeof functions](call.args['k']);
-                        console.log('Data content:', data)
-                        console.log('Type of data:', typeof data);
-                        const dataArray = Array.isArray(data) ? data : [data];
-                        return {
-                            name: call.name,
-                            data: data,
-                            locations: dataArray
-                                .map(item => (item.latitude !== undefined && item.longitude !== undefined) ? {
-                                    functionName: call.name,
-                                    latitude: item.latitude,
-                                    longitude: item.longitude,
-                                } : null)
-                                .filter(item => item !== null),
-                        };
-                    }
+        console.log(functionCall);
+        if (functionCall) {
+            // Process function calls
+            const functionName = functionCall.name;
+            const functionArgs = JSON.parse(functionCall.arguments);
+
+            if (functionName in functions) {
+                let functionResult;
+
+                if (functionName === 'searchGoogle' && functionArgs.query) {
+                    functionResult = await functions[functionName](functionArgs.query);
+                } else if (functionName === 'getPosition') {
+                    functionResult = await functions[functionName]();
+                } else if (functionName === 'getWeather') {
+                    functionResult = await functions[functionName](functionArgs.location)
+                } else if (functionName === 'fetchAllRoutesToDestination') {
+                    const modes = ['driving', 'walking', 'bicycling', 'transit'];
+                    const allRoutes = await Promise.all(
+                        modes.map(async (mode) => {
+                            try {
+                                const routeData = await functions[functionName](functionArgs.origin, functionArgs.destination, mode);
+                                return {
+                                    mode: mode,
+                                    route: routeData
+                                };
+                            } catch (err) {
+                                console.error(`Error fetching route for ${mode}:`, err);
+                                return null;
+                            }
+                        })
+                    );
+
+                    const locations = allRoutes.flatMap((route) => {
+                        const legs = route?.route?.routes[0]?.legs[0];
+                        return legs ? [{ title: '路線圖', latitude: legs.end_location.lat, longitude: legs.end_location.lng }] : [];
+                    });
+
+                    functionResult = { name: functionName, data: allRoutes, locations };
+                } else if (functionName === 'getServices') {
+                    functionResult = await functions[functionName](functionArgs.appName);
+                } else if(functionName === 'findTimeBetweenStation'){
+                    functionResult = await functions[functionName](functionArgs.station_1, functionArgs.station_2);
+                }else if(functionName === 'getCoordinates'){
+                    functionResult = await functions[functionName](functionArgs.location);
                 }
-                return null;
-            }));
+                else {
+                    functionResult = await functions[functionName](functionArgs.k);
+                }
 
-            const validResults = functionResults
-                .filter((result): result is {
-                    name: string;
-                    data: any
-                    locations: Array<{
-                        functionName: string;
-                        latitude: number;
-                        longitude: number;
-                    }>
-                } => result !== null);
+                const locations = Array.isArray(functionResult) ? functionResult.map(item => ({
+                    title: item.title,
+                    latitude: item.latitude,
+                    longitude: item.longitude,
+                })) : [];
 
-            if (validResults.length > 0) {
-                const followUpResult = await chat.sendMessage(JSON.stringify(validResults));
+                console.log(functionResult);
+
+                // Send function result back to chat model
+                const followUpResult = await fetch('https://api.openai.com/v1/chat/completions', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': `Bearer ${apiKey}`
+                    },
+                    body: JSON.stringify({
+                        model: 'gpt-4o',
+                        messages: [
+                            { role: 'system', content: SYSTEM_PROMPT },
+                            ...chatHistory.value.map(chat => ({
+                                role: chat.isUser ? 'user' : 'system',
+                                content: chat.content
+                            })).slice(-5),
+                            ...(result.choices[0].message.content != null ? [{ role: 'assistant', content: result.choices[0].message.content }] : []),
+                            { role: 'assistant', content: '相關資訊：' + JSON.stringify(functionResult) }
+                        ],
+                    })
+                });
+
+                const followUpResponse = await followUpResult.json();
                 chatHistory.value.push({
                     id: Date.now(),
                     isUser: false,
-                    content: followUpResult.response.text(),
-                    locations: validResults.flatMap(res => res.locations)
+                    content: followUpResponse.choices[0].message.content,
+                    locations: locations
                 });
-            } else {
-                // console.log("no tools used")
-                chatHistory.value.push({ id: Date.now(), isUser: false, content: text, locations: [] });
             }
         } else {
-            console.log('no tools used');
+            // No function calls were made
             chatHistory.value.push({ id: Date.now(), isUser: false, content: text, locations: [] });
         }
     } catch (error) {
         console.error('Error sending message:', error);
         chatHistory.value.push({ id: Date.now(), isUser: false, content: 'Sorry, an error occurred. Please try again.', locations: [] });
-        chat = model.startChat({ tools: [{ functionDeclarations }] });
     } finally {
         loading.value = false;
         await nextTick();
@@ -434,7 +647,18 @@ const scrollToBottom = () => {
 };
 
 onMounted(() => {
-    scrollToBottom();
+    userName = userStore.user?.realName ?? '';
+    console.log(userName);
+    const welcomeMessage = `${userName}您好，請問需要什麼服務嗎？`;
+    chatHistory.value.push({
+        id: Date.now(),
+        isUser: false,
+        content: welcomeMessage,
+        locations: []
+    });
+    return {
+        message: "${welcomeMessage}"
+    };
 });
 </script>
 

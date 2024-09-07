@@ -5,6 +5,7 @@ const path = require('path');
 const csv = require('csv-parser');
 const moment = require('moment');
 const haversine = require('haversine-distance');
+const axios = require('axios');
 
 const app = express();
 
@@ -39,7 +40,6 @@ app.post('/api/save-env', async (req, res) => {
 });
 
 app.get('/trash', async (req, res) => {
-    console.log('trash')
     try {
         const { latitude, longitude, k = 5 } = req.query;
 
@@ -107,6 +107,60 @@ app.get('/trash', async (req, res) => {
     }
 });
 
+app.get('/metro', async (req, res) => {
+    const { StartSID, EndSID, Lang } = req.query;
+    const url = 'https://web.metro.taipei/apis/metrostationapi/routetimepathinfo';
+    const headers = {
+        'Accept': 'application/json, text/plain, */*',
+        'Content-Type': 'application/json',
+        'Origin': 'https://web.metro.taipei',
+        'Referer': 'https://web.metro.taipei/pages/tw/ticketroutetime/019/018',
+        'Sec-Fetch-Dest': 'empty',
+        'Sec-Fetch-Mode': 'cors',
+        'Sec-Fetch-Site': 'same-origin',
+    };
+    const data = {
+        StartSID,
+        EndSID,
+        Lang
+    };
+
+    try {
+        const response = await axios.post(url, data, { headers: headers });
+        res.json(response.data)
+    } catch (error) {
+        res.status(500).json({ error: 'Failed to metro' });
+    }
+});
+
+app.get('/map', async (req, res) => {
+    const { origin, destination, mode, key } = req.query;
+    const queryParams = new URLSearchParams({
+        origin,
+        destination,
+        mode,
+        key
+    });
+
+    const url = `https://maps.googleapis.com/maps/api/directions/json?${queryParams.toString()}`;
+    const headers = {
+        'Accept': 'application/json, text/plain, */*',
+        'Content-Type': 'application/json',
+        'Origin': 'https://maps.googleapis.com',
+        'Referer': 'https://maps.googleapis.com',
+        'Sec-Fetch-Dest': 'empty',
+        'Sec-Fetch-Mode': 'cors',
+        'Sec-Fetch-Site': 'same-origin',
+    };
+
+    try {
+        const response = await axios.get(url, { headers: headers });
+        res.json(response.data)
+    } catch (error) {
+        console.log(error)
+        res.status(500).json({ error: 'Failed to map' });
+    }
+});
 
 const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => {
