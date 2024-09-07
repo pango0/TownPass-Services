@@ -162,39 +162,13 @@ async function getWeather(locationName: string): Promise<BotResponse> {
 }
 
 async function getServices(appName: string): Promise<{ description: string; url: string; }> {
-    const serviceDescription = {
-        "1999": "播打網路語音通話",
-        "申辦服務": "線上申辦市政府服務個項目（市民）",
-        "有話要說": "陳情系統",
-        "臨櫃叫號": "臨櫃服務查看叫號、預約",
-        "網路投票": "收集民意，促進民眾參與市政服務",
-        "市民儀表板": "提供臺北市生活的重要數據",
-        "意見調查": "了解民眾與台北市互動體驗調查",
-        "警政服務": "提供線上、語音報案",
-        "里辦服務": "提供居民更即時在地區里服務",
-        "疫苗預約": "預約Covid-19、流感疫苗施打",
-        "聯醫掛號": "北市聯合醫院各院區線上掛號",
-        "台北電台": "線上即時收聽-臺北廣播電台",
-        "親子館": "線上預約各區親子館活動報名",
-        "簡單森呼吸": "提供綠化地圖資訊",
-        "寵物安心遛": "提供寵物友善地圖資訊",
-        "用水服務": "繳交水費、查詢或自報用水度數",
-        "民生物資": "提供北市民生物資交易量與金額",
-        "圖書借閱": "市立圖書館借閱服務",
-        "找地點": "提供各區日常服務地圖查找",
-        "愛遊動物園": "動物園區資訊導覽、線上地圖",
-        "智慧客服": "台北通智慧客服機器人"
-    }
     const serviceUrls: { [key: string]: string } = {
         "申辦服務": 'https://taipei-pass-service.vercel.app/',
         "市民儀表板": 'https://dashboard.gov.taipei/',
         "找地點": 'https://taipei-pass-service.vercel.app/surrounding-service/'
     };
 
-    return {
-        description: serviceDescription[appName] || '',
-        url: serviceUrls[appName] || "https://townpass.taipei/"
-    };
+    return serviceUrls[appName] || "https://townpass.taipei/";
 }
 
 async function findRentableStation(k: number): Promise<YouBikeDataWithDistance[] | null> {
@@ -397,28 +371,7 @@ const functionDeclarations = [
     },
     {
         name: "getServices",
-        description: `Tool to obtain service description and link. Available service names and descriptions:
-1999: 播打網路語音通話
-申辦服務: 線上申辦市政府服務個項目（市民）
-有話要說: 陳情系統
-臨櫃叫號: 臨櫃服務查看叫號、預約
-網路投票: 收集民意，促進民眾參與市政服務
-市民儀表板: 提供臺北市生活的重要數據
-意見調查: 了解民眾與台北市互動體驗調查
-警政服務: 提供線上、語音報案
-里辦服務: 提供居民更即時在地區里服務
-疫苗預約: 預約Covid-19、流感疫苗施打
-聯醫掛號: 北市聯合醫院各院區線上掛號
-台北電台: 線上即時收聽-臺北廣播電台
-親子館: 線上預約各區親子館活動報名
-簡單森呼吸: 提供綠化地圖資訊
-寵物安心遛: 提供寵物友善地圖資訊
-用水服務: 繳交水費、查詢或自報用水度數
-民生物資: 提供北市民生物資交易量與金額
-圖書借閱: 市立圖書館借閱服務
-找地點: 提供各區日常服務地圖查找
-愛遊動物園: 動物園區資訊導覽、線上地圖
-智慧客服: 台北通智慧客服機器人`,
+        description: `取得服務的網址`,
         parameters: {
             type: "object",
             properties: {
@@ -473,6 +426,31 @@ const renderMarkdown = (text: string) => {
     return marked(text);
 };
 
+const SYSTEM_PROMPT = `你是一位台北市的助理，你叫做「台北通智慧助理」. 你有以下服務：
+1999: 播打網路語音通話
+申辦服務: 線上申辦市政府服務個項目（市民）
+有話要說: 陳情系統
+臨櫃叫號: 臨櫃服務查看叫號、預約
+網路投票: 收集民意，促進民眾參與市政服務
+市民儀表板: 提供臺北市生活的重要數據
+意見調查: 了解民眾與台北市互動體驗調查
+警政服務: 提供線上、語音報案
+里辦服務: 提供居民更即時在地區里服務
+疫苗預約: 預約Covid-19、流感疫苗施打
+聯醫掛號: 北市聯合醫院各院區線上掛號
+台北電台: 線上即時收聽-臺北廣播電台
+親子館: 線上預約各區親子館活動報名
+簡單森呼吸: 提供綠化地圖資訊
+寵物安心遛: 提供寵物友善地圖資訊
+用水服務: 繳交水費、查詢或自報用水度數
+民生物資: 提供北市民生物資交易量與金額
+圖書借閱: 市立圖書館借閱服務
+找地點: 提供各區日常服務地圖查找
+愛遊動物園: 動物園區資訊導覽、線上地圖
+智慧客服: 台北通智慧客服機器人
+
+當使用者的輸入有關這些服務，你就要推薦他服務的網址。
+請用繁體中文回答問題.`;
 const sendMessage = async () => {
     if (userInput.value.trim() === '') return;
 
@@ -486,7 +464,8 @@ const sendMessage = async () => {
     try {
         // Prepare the payload for OpenAI API
         const messages = [
-            { role: 'system', content: '你是一位台北市的助理，你叫做"台北通智慧助理". 請用繁體中文回答問題. ' },
+            {
+                role: 'system', content: SYSTEM_PROMPT },
             ...chatHistory.value.map(chat => ({
                 role: chat.isUser ? 'user' : 'assistant',
                 content: chat.content
@@ -579,7 +558,7 @@ const sendMessage = async () => {
                     body: JSON.stringify({
                         model: 'gpt-4o',
                         messages: [
-                            { role: 'system', content: '你是一位台北市的助理，你叫做"台北通智慧助理". 請用繁體中文回答問題. ' },
+                            { role: 'system', content: SYSTEM_PROMPT },
                             ...chatHistory.value.map(chat => ({
                                 role: chat.isUser ? 'user' : 'system',
                                 content: chat.content
