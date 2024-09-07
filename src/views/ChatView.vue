@@ -58,7 +58,7 @@
                 <input 
                     v-model="userInput" 
                     :disabled="loading"
-                    :placeholder="isListening ? '聆聽中...' : '輸入你的問題'"
+                    :placeholder="isParsing ? '處理中...' : (isListening ? '聆聽中...' : '輸入你的問題')"
                     class="flex-grow h-10 px-4 border border-tiffany-blue rounded-full focus:outline-none focus:ring-2 focus:ring-tiffany-blue"
                 />
                 <button @click="sendMessage" :disabled="loading"
@@ -198,6 +198,7 @@ recognition.interimResults = true;
 
 const isListening = ref(false);
 const isRed = ref(false);
+const isParsing = ref(false)
 let mediaStream = null;
 
 const GOOGLE_API_KEY = import.meta.env.VITE_GoogleMap_API_KEY;
@@ -241,6 +242,7 @@ function convertBlobToBase64(blob: Blob): Promise<string> {
 
 async function transcribeAudio(base64Audio: string): Promise<string> {
     try {
+        isParsing.value = true
         const response = await fetch(`https://speech.googleapis.com/v1/speech:recognize?key=${GOOGLE_API_KEY}`, {
             method: 'POST',
             headers: {
@@ -260,6 +262,7 @@ async function transcribeAudio(base64Audio: string): Promise<string> {
 
         const data = await response.json();
 
+        isParsing.value=false
         if (response.ok && data.results) {
             return data.results[0]?.alternatives[0]?.transcript || 'Transcription failed.';
         } else {
