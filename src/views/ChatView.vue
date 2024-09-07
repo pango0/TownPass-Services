@@ -123,7 +123,7 @@ const chatHistory = ref<Array<{
 }>>([]);
 const loading = ref(false);
 const chatContainer = ref<HTMLElement | null>(null);
-async function getServices(appName: string): Promise<{message: string} | null> {
+async function getServices(appName: string): Promise<string> {
     const serviceUrls: { [key: string]: string } = {
         "申辦服務": 'https://taipei-pass-service.vercel.app/',
         "市民儀表板": 'https://dashboard.gov.taipei/',
@@ -132,14 +132,10 @@ async function getServices(appName: string): Promise<{message: string} | null> {
 
     const serviceUrl = serviceUrls[appName];
     if (!serviceUrl) {
-        return {
-            message: `Sorry, I could not find service name ${appName}`
-        };
+        return "https://townpass.taipei/";
     }
-    
-    return {
-        message: `Here's the service you are looking for: ${serviceUrl}`
-    };
+
+    return serviceUrl;
 }
 
 async function getWeather(): Promise<BotResponse> {
@@ -223,28 +219,11 @@ async function searchGoogle(query: string): Promise<any | null> {
     }
 }
 const functionDeclarations = [
-{
-    name: "getServices",
-    description: "Fetch the service URL for the requested app based on user queries like '我要申辦服務'.",
-    parameters: {
-        type: "object", 
-        properties: {
-            appName: {
-                type: "string",
-                description: "The name of the service or app the user is requesting, for example: '申辦服務'."
-            }
-        },
-        required: ["appName"]
-    }
-},
-
-
-
     {
         name: "getWeather",
         description: "Get the current weather forecast, including temperature and condition.",
         parameters: {
-            type: "object", 
+            type: "object",
             properties: {
                 dummy: {
                     type: "string",
@@ -321,7 +300,44 @@ const functionDeclarations = [
             },
             required: ["query"]
         }
-    }
+    },
+    {
+        name: "getServices",
+        description: `Tool to obtain service link`,
+        parameters: {
+            type: "object",
+            properties: {
+                appName: {
+                    type: "string",
+                    enum: [
+                        '1999',
+                        '申辦服務',
+                        '有話要說',
+                        '臨櫃叫號',
+                        '網路投票',
+                        '市民儀表板',
+                        '意見調查',
+                        '警政服務',
+                        '里辦服務',
+                        '疫苗預約',
+                        '聯醫掛號',
+                        '台北電台',
+                        '親子館',
+                        '簡單森呼吸',
+                        '寵物安心遛',
+                        '用水服務',
+                        '民生物資',
+                        '圖書借閱',
+                        '找地點',
+                        '愛遊動物園',
+                        '智慧客服'
+                    ],
+                    description: "The name of the service the user is requesting."
+                }
+            },
+            required: ["appName"]
+        }
+    },
 ];
 
 const functions = {
@@ -335,11 +351,7 @@ const functions = {
 };
 
 const genAI = new GoogleGenerativeAI(apiKey);
-<<<<<<< HEAD
 const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash", systemInstruction: "You are the assistant of Tapei City called '台北城市通智慧客服'. You answer questions in traditional chinese." });
-=======
-const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash", systemInstruction: "You should help anyone who wants to know more about Taipei, or finds services URL. You answer questions in traditional chinese" });
->>>>>>> 6523c4191b5d21fb8d6fc2fc6e660910c3bab5a5
 const chat = model.startChat({ tools: [{ functionDeclarations }] });
 
 const renderMarkdown = (text: string) => {
@@ -378,18 +390,18 @@ const sendMessage = async () => {
                                 location: null
                             };
                         }
-                    } else if(call.name === 'getServices'){
+                    } else if (call.name === 'getServices') {
                         const appName = call.args['appName'];
-            if (appName) {
-                const data = await functions[call.name](appName);
-                return {
-                    name: call.name,
-                    data: data,
-                    location: null
-                };
-            }
+                        if (appName) {
+                            const data = await functions[call.name](appName);
+                            return {
+                                name: call.name,
+                                data: data,
+                                location: null
+                            };
+                        }
                     }
-                        else {
+                    else {
                         console.log(call.args)
                         const data = await functions[call.name as keyof typeof functions](call.args['k']);
                         console.log(data)
