@@ -67,19 +67,21 @@
 
 <script setup lang="ts">
 import { ref, onMounted, nextTick } from 'vue';
-import { GoogleGenerativeAI } from '@google/generative-ai';
 import { marked } from 'marked';
 import {
     getNearestRentableStation,
     getNearestReturnableStation,
-    YouBikeDataWithDistance
+    type YouBikeDataWithDistance
 } from './youbike';
-import { getNearestMetroStation, MetroDataWithDistance } from './metro';
+import { getNearestMetroStation, type MetroDataWithDistance } from './metro';
 import { getDistance } from './distance';
 import { googleSearch } from './search';
-import { fetchWeatherData, BotResponse } from './weather';
-import { TrashCarData, getNearestTrashCarLocations } from './trash';
-import { fetchMetroGraphData, dijkstra, buildGraph, Route } from './metroS2S';
+import { fetchWeatherData, type BotResponse } from './weather';
+import { type TrashCarData, getNearestTrashCarLocations } from './trash';
+import { fetchMetroGraphData, dijkstra, buildGraph, type Route } from './metroS2S';
+import { useUserStore } from '../stores/user';
+const userStore = useUserStore();
+let userName = 'Guest';
 let userLatitude: number | null = null;
 let userLongitude: number | null = null;
 
@@ -165,7 +167,7 @@ async function findReturnableStation(k: number): Promise<YouBikeDataWithDistance
     }
 }
 
-async function findNearestMetroStation(k: number): Promise<MetroDataWithDistance[]> {
+async function findNearestMetroStation(k: number): Promise<MetroDataWithDistance[] | null> {
     try {
         initGeolocation();
         return await getNearestMetroStation(k);
@@ -354,7 +356,7 @@ const sendMessage = async () => {
             messages: messages,
             functions: functionDeclarations, // Pass any function declarations
             function_call: 'auto', // Let the model decide when to call a function
-            stream: true,
+            // stream: true,
         };
 
         // Call OpenAI API
@@ -405,11 +407,11 @@ const sendMessage = async () => {
                         'Authorization': `Bearer ${apiKey}`
                     },
                     body: JSON.stringify({
-                        model: 'gpt-4',
+                        model: 'gpt-4o',
                         messages: [
                             { role: 'assistant', content: query+JSON.stringify(functionResult)+'請用繁體中文回答' }
                         ],
-                        stream: true,
+                    //     stream: true,
                     })
                 });
 
