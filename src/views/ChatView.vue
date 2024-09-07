@@ -176,65 +176,86 @@ const loading = ref(false);
 const chatContainer = ref<HTMLElement | null>(null);
 
 const recognition = new (window.SpeechRecognition || window.webkitSpeechRecognition)();
-recognition.lang = 'zh-TW';
-recognition.continuous = false;
+recognition.lang = 'zh-TW'; 
+recognition.continuous = false; 
 recognition.interimResults = true;
 
 const isListening = ref(false);
 let mediaStream = null;
 
-function startDictation() {
+const GOOGLE_API_KEY = import.meta.env.VITE_GoogleMap_API_KEY;
+ 
+async function startRecording() {
     try {
-        var SpeechRecognition = SpeechRecognition || webkitSpeechRecognition;
-        var recognition = new SpeechRecognition();
-    } catch (e) {
-        console.log(e);
+        const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+        const mediaRecorder = new MediaRecorder(stream);
+        const audioChunks: Blob[] = [];
+
+        mediaRecorder.ondataavailable = (event) => {
+            audioChunks.push(event.data);
+        };
+
+        mediaRecorder.onstop = async () => {
+            const audioBlob = new Blob(audioChunks, { type: 'audio/webm' });
+            const base64Audio = await convertBlobToBase64(audioBlob);
+
+            // Send the base64 audio to Google Cloud API
+            const transcription = await transcribeAudio(base64Audio);
+            userInput.value = transcription;
+        };
+
+        mediaRecorder.start();
+        setTimeout(() => {
+            mediaRecorder.stop();
+        }, 5000); // Record for 5 seconds
+    } catch (error) {
+        console.error('Error accessing microphone:', error);
     }
+}
 
-    if (recognition) {
-        recognition.continuous = false;
-        recognition.interimResults = true;
+function convertBlobToBase64(blob: Blob): Promise<string> {
+    return new Promise((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onloadend = () => resolve(reader.result?.toString().split(',')[1] || '');
+        reader.onerror = reject;
+        reader.readAsDataURL(blob);
+    });
+}
 
-        recognition.lang = 'zh-TW';
-        recognition.start();
+async function transcribeAudio(base64Audio: string): Promise<string> {
+    try {
+        const response = await fetch(`https://speech.googleapis.com/v1/speech:recognize?key=${GOOGLE_API_KEY}`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+                config: {
+                    encoding: 'WEBM_OPUS',
+                    sampleRateHertz: 16000,
+                    languageCode: 'zh-TW' // Use 'zh-CN' for Simplified Chinese or 'zh-TW' for Traditional Chinese
+                },
+                audio: {
+                    content: base64Audio
+                }
+            })
+        });
 
-        recognition.onresult = function (e) {
-            $('#searchInput').val(e.results[0][0].transcript);
-            console.log(e.results[0][0].transcript);
-        };
-
-        recognition.onerror = (e) => {
-            console.error('Speech recognition error detected: ' + e.error);
-            recognition.stop();
-        };
-
-        recognition.onend = () => {
-            console.log('Speech recognition service disconnected');
-        }
-
+        const data = await response.json();
+        return data.results?.[0]?.alternatives?.[0]?.transcript || 'Transcription failed.';
+    } catch (error) {
+        console.error('Error transcribing audio:', error);
+        return 'Error transcribing audio.';
     }
 }
 
 const toggleVoiceInput = async () => {
     if (isListening.value) {
-        recognition.stop();
         stopVoiceInput();
-
     } else {
         try {
             await startVoiceInput();
-            recognition.start();
-            console.log('here start success')
-            recognition.onresult = (event) => {
-                const transcript = event.results[0][0].transcript;
-                userInput.value = transcript;
-            };
-
-            recognition.onerror = (event) => {
-                console.error('Speech recognition error:', event.error);
-            };
-            console.log('here start finish')
-
+            startRecording();  // Start recording here
         } catch (error) {
             console.error('Error starting voice input:', error);
             alert('Unable to access the microphone. Please check your browser settings.');
@@ -252,7 +273,6 @@ const startVoiceInput = async () => {
         alert('Failed to access the microphone. Please check your browser settings.');
     }
 };
-
 
 const stopVoiceInput = () => {
     if (mediaStream) {
