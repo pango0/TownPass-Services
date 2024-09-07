@@ -136,12 +136,12 @@ let userLongitude: number | null = null;
 // hhh()
 
 const commonQueries = ref([
-    '附近有哪裡可以租YouBike？',
-    '附近有哪裡可以還YouBike？',
-    '最近的捷運站在哪裡？',
+    '我附近有哪裡可以租YouBike？',
+    '我附近有哪裡可以還YouBike？',
+    '離我最近的捷運站在哪裡？',
     '台北市有哪些景點推薦？',
     '今天天氣如何？',
-    '最近的垃圾車地點在哪裡？'
+    '離我最近的垃圾車地點在哪裡？'
 ]);
 const sendCommonQuery = (query: string) => {
     userInput.value = query;
@@ -434,10 +434,9 @@ async function searchGoogle(query: string): Promise<any | null> {
     }
 }
 
-async function findTrashCarLocation(k: number): Promise<TrashCarData[] | null> {
+async function findTrashCarLocation(k: number, lat: number, long: number): Promise<TrashCarData[] | null> {
     try {
-        initGeolocation();
-        return await getNearestTrashCarLocations(k);
+        return await getNearestTrashCarLocations(k, lat, long);
     } catch (error) {
         console.error('Error fetching trash car locations:', error);
         return [];
@@ -480,7 +479,7 @@ const functionDeclarations = [
     {
         name: 'findRentableStation',
         description:
-            "This tool is used to get the kth nearest YouBike station's data from a location where there are available bikes to rent from the user.",
+            "This tool is used to get the kth nearest YouBike station's data from a location where there are available bikes to rent, please get the location's coordinates first with getCoordinates",
         parameters: {
             type: 'object',
             properties: {
@@ -503,7 +502,7 @@ const functionDeclarations = [
     {
         name: 'findReturnableStation',
         description:
-            "This tool is used to get the kth nearest YouBike station's data from a location where there are available vacancies to return the bikes from the user.",
+            "This tool is used to get the kth nearest YouBike station's data from a location where there are available vacancies to return the bikes , please get the location's coordinates first with getCoordinates",
         parameters: {
             type: 'object',
             properties: {
@@ -525,7 +524,7 @@ const functionDeclarations = [
     },
     {
         name: 'findNearestMetroStation',
-        description: "Get the kth nearest Metro station's data from a location, including the distance from the user.",
+        description: "Get the kth nearest Metro station's data from a location, including the distance from the user. Please get the location's coordinates first with getCoordinates",
         parameters: {
             type: 'object',
             properties: {
@@ -578,15 +577,24 @@ const functionDeclarations = [
     {
         name: 'findTrashCarLocation',
         description:
-            'Get the kth nearest trash car location that is available today, including location and arrive time',
+            'Get the kth nearest trash car location from a place that is available today, including location and arrive time, please get the coordinates of the place first with getCoordinates',
         parameters: {
             type: 'object',
             properties: {
                 k: {
                     type: 'number',
                     description: 'This parameter is k.'
+                },
+                lat: {
+                    type: 'number',
+                    description: 'This parameter is the latitude of the place'
+                },
+                long: {
+                    type: 'number',
+                    description: 'This parameter is the longtitude of the place'
                 }
-            }
+            },
+            required: ['k', 'lat', 'long']
         }
     },
     {
@@ -725,6 +733,7 @@ const SYSTEM_PROMPT = `你是一位台北市的助理，你叫做「台北通智
 智慧客服: 台北通智慧客服機器人
 
 請用繁體中文回答問題`;
+
 const sendMessage = async () => {
     if (userInput.value.trim() === '') return;
     loading.value = true;

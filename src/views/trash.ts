@@ -11,9 +11,6 @@ export interface TrashCarData {
     distance: number;
 }
 
-let userLatitude: number | null = null;
-let userLongitude: number | null = null;
-
 function getDistance(lat1: number, lon1: number, lat2: number, lon2: number): number {
   const R = 6371; // Radius of the Earth in kilometers
   const dLat = (lat2 - lat1) * (Math.PI / 180);
@@ -28,24 +25,6 @@ function getDistance(lat1: number, lon1: number, lat2: number, lon2: number): nu
   return R * c;
 }
 
-function initGeolocation(): Promise<void> {
-  return new Promise((resolve, reject) => {
-    if (navigator.geolocation) {
-      navigator.geolocation.getCurrentPosition(
-        (position) => {
-          userLatitude = position.coords.latitude;
-          userLongitude = position.coords.longitude;
-          resolve();
-        },
-        (error) => {
-          reject(error);
-        }
-      );
-    } else {
-      reject(new Error('Geolocation is not supported by this browser.'));
-    }
-  });
-}
 
 function isTimeInFuture(departureTime: string): boolean {
   const now = new Date();
@@ -61,17 +40,11 @@ function isTimeInFuture(departureTime: string): boolean {
   return departureDate > now;
 }
 
-export async function fetchTrashCarData(k: number): Promise<TrashCarData[]> {
+export async function fetchTrashCarData(k: number, lat: number, long: number): Promise<TrashCarData[]> {
   try {
-    await initGeolocation();
-
-    if (userLatitude === null || userLongitude === null) {
-      throw new Error('Unable to get user location');
-    }
-
     const queryParams = new URLSearchParams({
-        latitude: userLatitude,
-        longitude: userLongitude,
+        latitude: lat,
+        longitude: long,
         k: k,
     });
 
@@ -86,9 +59,9 @@ export async function fetchTrashCarData(k: number): Promise<TrashCarData[]> {
   }
 }
 
-export async function getNearestTrashCarLocations(k: number): Promise<TrashCarData[] | null> {
+export async function getNearestTrashCarLocations(k: number, lat: number, long: number): Promise<TrashCarData[] | null> {
   try {
-    const trashCarData = await fetchTrashCarData(k);
+    const trashCarData = await fetchTrashCarData(k, lat, long);
 
     if (trashCarData.length === 0) {
       return null;
