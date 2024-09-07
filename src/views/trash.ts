@@ -88,7 +88,7 @@ export async function fetchTrashCarData(k: number): Promise<TrashCarData[]> {
 
 export async function getNearestTrashCarLocations(k: number): Promise<TrashCarData[] | null> {
   try {
-    const trashCarData = await fetchTrashCarDataWithDistance(k);
+    const trashCarData = await fetchTrashCarData(k);
 
     if (trashCarData.length === 0) {
       return null;
