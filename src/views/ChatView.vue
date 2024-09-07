@@ -286,12 +286,6 @@ async function fetchAllRoutesToDestination(message: string): Promise<void> {
     });
   } catch (error) {
     console.error('Failed to fetch routes:', error);
-    chatHistory.value.push({
-      id: Date.now(),
-      isUser: false,
-      content: '取得路徑時發生錯誤，請稍後再試。',
-      locations: []
-    });
   } finally {
     loading.value = false;
   }
@@ -489,30 +483,25 @@ const sendMessage = async () => {
                   const modes = ['driving', 'walking', 'bicycling', 'transit'];
                   const allRoutes = await Promise.all(
                     modes.map(async (mode) => {
-                      const routeData = await functions[functionName](query);
-                      return {
-                        mode: mode,
-                        route: routeData
-                      };
+                      try {
+                        const routeData = await functions[functionName](query);
+                        return {
+                          mode: mode,
+                          route: routeData
+                        };
+                      } catch (err) {
+                        console.error(`Error fetching route for ${mode}:`, err);
+                        return null;
+                      }
                     })
                   );
 
-                  // Construct locations based on the routes
                   const locations = allRoutes.flatMap((route) => {
-                    const legs = route.route?.routes[0]?.legs[0];
-                    return legs
-                      ? [
-                          {
-                            functionName,
-                            latitude: legs.end_location.lat,
-                            longitude: legs.end_location.lng
-                          }
-                        ]
-                      : [];
+                    const legs = route?.route?.routes[0]?.legs[0];
+                    return legs ? [{ functionName, latitude: legs.end_location.lat, longitude: legs.end_location.lng }] : [];
                   });
 
                   functionResult = { name: functionName, data: allRoutes, locations };
-
                 }  
                 else {
                     functionResult = await functions[functionName](functionArgs.k);
