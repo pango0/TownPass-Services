@@ -231,23 +231,30 @@ async function transcribeAudio(base64Audio: string): Promise<string> {
             },
             body: JSON.stringify({
                 config: {
-                    encoding: 'WEBM_OPUS',
-                    sampleRateHertz: 16000,
-                    languageCode: 'zh-TW' // Use 'zh-CN' for Simplified Chinese or 'zh-TW' for Traditional Chinese
+                    encoding: 'WEBM_OPUS',  // Verify if 'WEBM_OPUS' is the correct format
+                    sampleRateHertz: 48000, // Ensure the sample rate matches your audio
+                    languageCode: 'zh-TW'   // Language code for Traditional Chinese
                 },
                 audio: {
-                    content: base64Audio
+                    content: base64Audio    // Base64 encoded audio content
                 }
             })
         });
 
         const data = await response.json();
-        return data.results?.[0]?.alternatives?.[0]?.transcript || 'Transcription failed.';
+        
+        if (response.ok && data.results) {
+            return data.results[0]?.alternatives[0]?.transcript || 'Transcription failed.';
+        } else {
+            console.error('Error in transcription response:', data);
+            return 'Transcription failed.';
+        }
     } catch (error) {
         console.error('Error transcribing audio:', error);
         return 'Error transcribing audio.';
     }
 }
+
 
 const toggleVoiceInput = async () => {
     if (isListening.value) {
