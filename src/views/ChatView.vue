@@ -277,22 +277,12 @@ async function fetchAllRoutesToDestination(message: string): Promise<void> {
     );
 
     results.forEach((result, index) => {
-      if (result && result.routes) {
-        chatHistory.value.push({
-          id: Date.now(),
-          isUser: false,
-          content: `交通方式（${modes[index]}）找到的路線：${JSON.stringify(result.routes)}`,
-          locations: []
-        });
-      } else {
-        console.error(`No route found for ${modes[index]}.`);
-        chatHistory.value.push({
-          id: Date.now(),
-          isUser: false,
-          content: `無法找到指定路徑的${modes[index]}交通路線。`,
-          locations: []
-        });
-      }
+      chatHistory.value.push({
+        id: Date.now(),
+        isUser: false,
+        content: `交通方式（${modes[index]}）找到的路線：${JSON.stringify(result.routes)}`,
+        locations: []
+      });
     });
   } catch (error) {
     console.error('Failed to fetch routes:', error);
@@ -409,18 +399,18 @@ const functionDeclarations = [
         }
     },
     {
-    name: 'fetchAllRoutesToDestination',
-    description: 'give the possible route from origin to destination',
-    parameters: {
-      type: 'object',
-      properties: {
-        message: {
-          type: 'string',
-          description: 'This parameter is used for get the complete query message of the user'
+      name: 'fetchAllRoutesToDestination',
+      description: 'give the possible route from origin to destination',
+      parameters: {
+        type: 'object',
+        properties: {
+          message: {
+            type: 'string',
+            description: 'This parameter is used for get the complete query message of the user'
+          }
         }
       }
     }
-  }
 ];
 
 const functions = {
@@ -495,7 +485,36 @@ const sendMessage = async () => {
                     functionResult = await functions[functionName](functionArgs.query);
                 } else if (functionName === 'getPosition') {
                     functionResult = await functions[functionName]();
-                } else {
+                } else if (functionName === 'fetchAllRoutesToDestination') {
+                  const modes = ['driving', 'walking', 'bicycling', 'transit'];
+                  const allRoutes = await Promise.all(
+                    modes.map(async (mode) => {
+                      const routeData = await functions[functionName](query);
+                      return {
+                        mode: mode,
+                        route: routeData
+                      };
+                    })
+                  );
+
+                  // Construct locations based on the routes
+                  const locations = allRoutes.flatMap((route) => {
+                    const legs = route.route?.routes[0]?.legs[0];
+                    return legs
+                      ? [
+                          {
+                            functionName,
+                            latitude: legs.end_location.lat,
+                            longitude: legs.end_location.lng
+                          }
+                        ]
+                      : [];
+                  });
+
+                  functionResult = { name: functionName, data: allRoutes, locations };
+
+                }  
+                else {
                     functionResult = await functions[functionName](functionArgs.k);
                 }
 
