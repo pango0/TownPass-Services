@@ -6,13 +6,30 @@
                 <p class="font-semibold">{{ message.isUser ? '你' : '人工智慧助理' }}:</p>
                 <div v-if="message.isUser" class="mt-1">{{ message.content }}</div>
                 <div v-else v-html="renderMarkdown(message.content)" class="mt-1 prose prose-sm max-w-none"></div>
-                <div v-for="location in message.locations" :key="location.latitude" style="padding: 12px">
-                    <div>
+                  <div class="maps-container">
+                    <div class="maps-scroll-container" ref="scrollContainer" @scroll="updateActiveDot">
+                    <div v-for="(location, index) in message.locations" :key="location.latitude" class="map-item">
+                        <div class="map-title">
                         <span>{{ location.title }}</span>
+                        </div>
+                        <iframe 
+                        class="map-frame" 
+                        loading="lazy"
+                        allowfullscreen 
+                        referrerpolicy="no-referrer-when-downgrade"
+                        :src="`https://www.google.com/maps/embed/v1/directions?key=AIzaSyCpQnECnOpwD9-XT_Jah9o5qlqBHChW7IU&origin=${userLatitude},${userLongitude}&destination=${location.latitude},${location.longitude}&mode=walking`"
+                        ></iframe>
                     </div>
-                    <iframe class="w-full h-[300px] rounded-lg" height="300" style="border: 0" loading="lazy"
-                        allowfullscreen referrerpolicy="no-referrer-when-downgrade"
-                        :src="`https://www.google.com/maps/embed/v1/directions?key=AIzaSyCpQnECnOpwD9-XT_Jah9o5qlqBHChW7IU&origin=${userLatitude},${userLongitude}&destination=${location.latitude},${location.longitude}&mode=walking`"></iframe>
+                    </div>
+                    <div class="dot-indicators">
+                    <span 
+                        v-for="(_, index) in message.locations" 
+                        :key="index" 
+                        class="dot" 
+                        :class="{ 'active': activeDotIndex === index }"
+                        @click="scrollToMap(index)"
+                    ></span>
+                    </div>
                 </div>
                 <div v-if="message.suggestedService != null" class="mt-4">
                     <!-- 標題 -->
@@ -82,7 +99,6 @@
 </style>
 
 <script setup lang="ts">
-import { Document } from "langchain/document";
 import { ref, onMounted, nextTick } from 'vue';
 import { marked } from 'marked';
 import {
@@ -708,7 +724,7 @@ const SYSTEM_PROMPT = `你是一位台北市的助理，你叫做「台北通智
 愛遊動物園: 動物園區資訊導覽、線上地圖
 智慧客服: 台北通智慧客服機器人
 
-請用繁體中文回答問題.請透過函式呼叫一步一步得到答案，請勿放棄`;
+請用繁體中文回答問題`;
 const sendMessage = async () => {
     if (userInput.value.trim() === '') return;
     loading.value = true;
@@ -944,5 +960,45 @@ onMounted(() => {
     100% {
         transform: rotate(360deg);
     }
+}
+
+
+</style>
+<style scoped>
+.maps-container {
+  width: 100%;
+  overflow: hidden;
+}
+
+.maps-scroll-container {
+  display: flex;
+  overflow-x: auto;
+  scroll-snap-type: x mandatory;
+  -webkit-overflow-scrolling: touch;
+  scrollbar-width: none; /* Firefox */
+  -ms-overflow-style: none;  /* Internet Explorer 10+ */
+}
+
+.maps-scroll-container::-webkit-scrollbar { 
+  display: none;  /* WebKit */
+}
+
+.map-item {
+  flex: 0 0 95%;
+  width: 100%;
+  scroll-snap-align: start;
+  padding: 10px;
+}
+
+.map-title {
+  margin-bottom: 10px;
+  font-weight: bold;
+}
+
+.map-frame {
+  width: 100%;
+  height: 300px;
+  border: none;
+  border-radius: 8px;
 }
 </style>
