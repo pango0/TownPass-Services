@@ -1,17 +1,5 @@
 <template>
     <div class="flex flex-col h-screen max-w-2xl mx-auto bg-white shadow-lg rounded-lg overflow-hidden">
-        <header class="flex justify-between items-center bg-white p-4">
-            <h1 class="text-3xl font-bold text-tiffany-blue">人工智慧助理</h1>
-            <router-link to="/settings" class="text-[#71b2c2] hover:text-tiffany-blue">
-                <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24"
-                    stroke="currentColor">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                        d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                        d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
-                </svg>
-            </router-link>
-        </header>
         <div class="flex-grow overflow-y-auto p-4 space-y-4" ref="chatContainer">
             <div v-for="message in chatHistory" :key="message.id" class="p-3 rounded-lg"
                 :class="message.isUser ? 'bg-tiffany-blue text-white' : 'bg-gray-100'">
@@ -73,17 +61,30 @@ import {
     getNearestReturnableStation,
     type YouBikeDataWithDistance
 } from './youbike';
-import { getNearestMetroStation, type MetroDataWithDistance } from './metro';
+import { getNearestMetroStation, getTimeBetweenStation, type MetroDataWithDistance } from './metro';
 import { getDistance } from './distance';
 import { googleSearch } from './search';
 import { fetchWeatherData, type BotResponse } from './weather';
 import { type TrashCarData, getNearestTrashCarLocations } from './trash';
-import { fetchMetroGraphData, dijkstra, buildGraph, type Route } from './metroS2S';
 import { useUserStore } from '../stores/user';
+import { getCoordinatesByPlaceName } from './getCoordinates';
 const userStore = useUserStore();
 let userName = 'Guest';
 let userLatitude: number | null = null;
 let userLongitude: number | null = null;
+// async function hhh() {
+//     // Sample usage
+//     const metroNetwork: Line[] = await fetchMetroGraphData();
+//     const graph = buildGraph(metroNetwork);
+
+//     const startStationID = "R10";  // Example: Taipei Nangang Exhibition Center
+//     const endStationID = "G07";    // Example: Taipei Main Station
+
+//     const result = dijkstra(graph, startStationID, endStationID);
+//     console.log(`Shortest time: ${result.time} seconds`);
+//     console.log(`Path: ${result.path.join(" -> ")}`);
+// }
+// hhh()
 
 const commonQueries = ref([
     '附近有哪裡可以租YouBike？',
@@ -177,12 +178,30 @@ async function findNearestMetroStation(k: number): Promise<MetroDataWithDistance
     }
 }
 
+async function findTimeBetweenStation(station_1: string, station_2: string): Promise<any | null> {
+    try{
+        return await getTimeBetweenStation(station_1, station_2);
+    }catch(error){
+        console.error('Error finding time between station:', error);
+        return null
+    }
+}
+
 async function findDistance(lat1: number, lon1: number): Promise<any | null> {
     try {
         initGeolocation();
         return await getDistance(lat1, lon1, userLatitude, userLongitude);
     } catch (error) {
         console.error('Error finding nearest metro station:', error);
+        return null;
+    }
+}
+
+async function getCoordinates(location: string) {
+    try{
+        return await getCoordinatesByPlaceName(location);
+    } catch (error){
+        console.error('Error finding coordinates:', error);
         return null;
     }
 }
@@ -263,22 +282,18 @@ const functionDeclarations = [
             }
         }
     },
-    // {
-    //     name: "findDistance",
-    //     description: "This tool can retrieve the distance between a location and the user.",
-    //     parameters: {
-    //         type: "object", properties: {
-    //             lat1: {
-    //                 type: "number",
-    //                 description: "This parameter is the latitude of the location"
-    //             },
-    //             lon1: {
-    //                 type: "number",
-    //                 description: "This parameter is the longitude of the location"
-    //             }
-    //         }
-    //     }
-    // },
+    {
+        name: "getCoordinates",
+        description: "This tool can retrieve the coordinates of a location.",
+        parameters: {
+            type: "object", properties: {
+                location: {
+                    type: "string",
+                    description: "This parameter is the name of the location"
+                },
+            }
+        }
+    },
     {
         name: 'searchGoogle',
         description: "Tool to obtain information you don't already know.",
@@ -306,6 +321,26 @@ const functionDeclarations = [
                 }
             }
         }
+    },
+    {
+        name: 'findTimeBetweenStation',
+        description:
+            'Get the travel time between two metro stations.',
+        parameters: {
+            type: 'object',
+            properties: {
+                station_1: {
+                    type: 'string',
+                    description: 'This is the first station\'s name in traditional chinese'
+                },
+                station_2: {
+                    type: 'string',
+                    description: 'This is the second station\'s name in traditional chinese'
+                }
+            },
+            required: ['station_1', 'station_2']
+
+        }
     }
 ];
 
@@ -316,11 +351,12 @@ const functions = {
     // findDistance
     searchGoogle,
     getWeather,
-    findTrashCarLocation
+    findTrashCarLocation,
+    findTimeBetweenStation,
+    getCoordinates
 };
 
 const apiKey = import.meta.env.VITE_OPENAI_API_KEY;
-
 //  async function hhh(){
 //     const data = await fetchMetroGraphData()
 //     console.log(data)
@@ -336,7 +372,6 @@ const renderMarkdown = (text: string) => {
 
 const sendMessage = async () => {
     if (userInput.value.trim() === '') return;
-
     loading.value = true;
     chatHistory.value.push({ id: Date.now(), isUser: true, content: userInput.value });
     const query = userInput.value;
@@ -376,7 +411,6 @@ const sendMessage = async () => {
         const functionCall = aiResponse.function_call;
         console.log(text);
         console.log(functionCall);
-
         if (functionCall) {
             // Process function calls
             const functionName = functionCall.name;
@@ -389,7 +423,12 @@ const sendMessage = async () => {
                     functionResult = await functions[functionName](functionArgs.query);
                 } else if (functionName === 'getPosition') {
                     functionResult = await functions[functionName]();
-                } else {
+                } else if(functionName === 'findTimeBetweenStation'){
+                    functionResult = await functions[functionName](functionArgs.station_1, functionArgs.station_2);
+                }else if(functionName === 'getCoordinates'){
+                    functionResult = await functions[functionName](functionArgs.location);
+                }
+                else {
                     functionResult = await functions[functionName](functionArgs.k);
                 }
 
