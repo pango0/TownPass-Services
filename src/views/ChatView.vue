@@ -77,8 +77,8 @@ import {
 import { getNearestMetroStation, MetroDataWithDistance } from './metro';
 import { getDistance } from './distance';
 import { googleSearch } from './search';
-import { fetchWeatherData } from './weather';
-import { fetchTrashCarData, TrashCarData, getNearestTrashCarLocations } from './trash';
+import { fetchWeatherData, BotResponse } from './weather';
+import { TrashCarData, getNearestTrashCarLocations } from './trash';
 
 let userLatitude: number | null = null;
 let userLongitude: number | null = null;
@@ -207,7 +207,7 @@ async function findTrashCarLocation(k: number): Promise<TrashCarData[] | null> {
 const functionDeclarations = [
     {
         name: 'getWeather',
-        description: 'Get the current weather forecast, including temperature and condition.',
+        description: 'This tool is used to get the current weather forecast, including temperature and condition.',
         parameters: {
             type: 'object',
             properties: {
@@ -221,13 +221,13 @@ const functionDeclarations = [
     {
         name: 'findRentableStation',
         description:
-            "Get the kth nearest YouBike station's data where there are available bikes to rent, including the distance from the user.",
+            "This tool is used to get the kth nearest YouBike station's data where there are available bikes to rent from the user.",
         parameters: {
             type: 'object',
             properties: {
                 k: {
                     type: 'number',
-                    description: 'This parameter is k.'
+                    description: 'This parameter is the number of stations you want to retrieve.'
                 }
             },
             required: ['k']
@@ -236,13 +236,13 @@ const functionDeclarations = [
     {
         name: 'findReturnableStation',
         description:
-            "Get the kth nearest YouBike station's data where there are available vacancies to return the bikes, including the distance from the user.",
+            "This tool is used to get the kth nearest YouBike station's data where there are available vacancies to return the bikes from the user.",
         parameters: {
             type: 'object',
             properties: {
                 k: {
                     type: 'number',
-                    description: 'This parameter is k.'
+                    description: 'This parameter is the number of stations you want to retrieve.'
                 }
             },
             required: ['k']
@@ -250,13 +250,13 @@ const functionDeclarations = [
     },
     {
         name: 'findNearestMetroStation',
-        description: "Get the kth nearest Metro station's data, including the distance from the user.",
+        description: "This tool is used to get the kth nearest Metro station's data from the user.",
         parameters: {
             type: 'object',
             properties: {
                 k: {
                     type: 'number',
-                    description: 'This parameter is k.'
+                    description: 'This parameter is the number of stations you want to retrieve.'
                 }
             }
         }
@@ -318,7 +318,7 @@ const functions = {
 };
 
 const genAI = new GoogleGenerativeAI(apiKey);
-const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash", systemInstruction: "You are the assistant of Taipei City called '台北城市通智慧助理'. You answer questions in traditional chinese" });
+const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash", systemInstruction: "You are the assistant of Taipei City called '台北通智慧助理', You answer questions in traditional chinese" });
 let chat = model.startChat({ tools: [{ functionDeclarations }] });
 
 const renderMarkdown = (text: string) => {

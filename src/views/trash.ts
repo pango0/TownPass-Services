@@ -61,7 +61,7 @@ function isTimeInFuture(departureTime: string): boolean {
   return departureDate > now;
 }
 
-export async function fetchTrashCarDataWithDistance(k: number): Promise<TrashCarData[]> {
+export async function fetchTrashCarData(k: number): Promise<TrashCarData[]> {
   try {
     await initGeolocation();
 
@@ -88,7 +88,7 @@ export async function fetchTrashCarDataWithDistance(k: number): Promise<TrashCar
 
 export async function getNearestTrashCarLocations(k: number): Promise<TrashCarData[] | null> {
   try {
-    const trashCarData = await fetchTrashCarDataWithDistance(k);
+    const trashCarData = await fetchTrashCarData(k);
 
     if (trashCarData.length === 0) {
       return null;
