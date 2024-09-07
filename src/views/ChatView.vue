@@ -161,14 +161,17 @@ async function getWeather(locationName: string): Promise<BotResponse> {
     }
 }
 
-async function getServices(appName: string): Promise<{ description: string; url: string; }> {
+async function getServices(appName: string): Promise<{ text: string; url: string; }> {
     const serviceUrls: { [key: string]: string } = {
         "申辦服務": 'https://taipei-pass-service.vercel.app/',
         "市民儀表板": 'https://dashboard.gov.taipei/',
         "找地點": 'https://taipei-pass-service.vercel.app/surrounding-service/'
     };
 
-    return serviceUrls[appName] || "https://townpass.taipei/";
+    return {
+        text: appName,
+        url: serviceUrls[appName] || "https://townpass.taipei/"
+    };
 }
 
 async function findRentableStation(k: number): Promise<YouBikeDataWithDistance[] | null> {
@@ -465,7 +468,8 @@ const sendMessage = async () => {
         // Prepare the payload for OpenAI API
         const messages = [
             {
-                role: 'system', content: SYSTEM_PROMPT },
+                role: 'system', content: SYSTEM_PROMPT
+            },
             ...chatHistory.value.map(chat => ({
                 role: chat.isUser ? 'user' : 'assistant',
                 content: chat.content
