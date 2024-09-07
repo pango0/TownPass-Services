@@ -38,6 +38,7 @@ export interface MetroDataWithDistance extends MetroData{
     distance: number;
     latitude: number;
     longitude: number;
+    title: string;
 }
 
 let userLatitude: number | null = null;
@@ -97,6 +98,7 @@ export async function fetchMetroData(): Promise<MetroDataWithDistance[]> {
             distance: getDistance(userLatitude!, userLongitude!, station.StationPosition.PositionLat, station.StationPosition.PositionLon),
             latitude: station.StationPosition.PositionLat,
             longitude: station.StationPosition.PositionLon,
+            title: station.StationName.Zh_tw,
         }));
         return dataWithDistance
     } catch (error) {

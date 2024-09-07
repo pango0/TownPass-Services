@@ -8,12 +8,8 @@
                 <div v-else v-html="renderMarkdown(message.content)" class="mt-1 prose prose-sm max-w-none"></div>
                 <div v-for="location in message.locations" :key="location.latitude" style="padding: 12px">
                     <div>
-                        <span v-if="location.functionName === 'findNearestMetroStation'">捷運地圖：</span>
-                        <span v-else-if="
-                            location.functionName === 'findReturnableStation' ||
-                            location.functionName === 'findRentableStation'
-                        ">
-                            YouBike地圖：
+                        <span>
+                            {{ location.title }}
                         </span>
                     </div>
 
@@ -147,7 +143,7 @@ const chatHistory = ref<
         isUser: boolean;
         content: string;
         locations: Array<{
-            functionName: string;
+            title: string;
             latitude: number;
             longitude: number;
         }>;
@@ -575,7 +571,7 @@ const sendMessage = async () => {
 
                     const locations = allRoutes.flatMap((route) => {
                         const legs = route?.route?.routes[0]?.legs[0];
-                        return legs ? [{ functionName, latitude: legs.end_location.lat, longitude: legs.end_location.lng }] : [];
+                        return legs ? [{ title: '路線圖', latitude: legs.end_location.lat, longitude: legs.end_location.lng }] : [];
                     });
 
                     functionResult = { name: functionName, data: allRoutes, locations };
@@ -591,7 +587,7 @@ const sendMessage = async () => {
                 }
 
                 const locations = Array.isArray(functionResult) ? functionResult.map(item => ({
-                    functionName,
+                    title: item.title,
                     latitude: item.latitude,
                     longitude: item.longitude,
                 })) : [];

@@ -23,6 +23,7 @@ export interface YouBikeDataWithDistance extends YouBikeData {
   distance: number;
   latitude: number;
   longitude: number;
+  title: string;
 }
 
 let userLatitude: number | null = null;
@@ -83,6 +84,7 @@ export async function fetchYouBikeDataWithDistance(): Promise<YouBikeDataWithDis
       ...station,
       sna: station.sna.slice('YouBike2.0_'.length),
       distance: getDistance(userLatitude!, userLongitude!, station.latitude, station.longitude),
+      title: station.sna.slice('YouBike2.0_'.length),
       latitude: station.latitude,
       longitude: station.longitude
     }));
