@@ -66,12 +66,13 @@
 </style>
 
 <script setup lang="ts">
+import { Document } from "langchain/document";
 import { ref, onMounted, nextTick } from 'vue';
 import { marked } from 'marked';
 import {
     getNearestRentableStation,
     getNearestReturnableStation,
-    YouBikeDataWithDistance
+    type YouBikeDataWithDistance
 } from './youbike';
 import { getNearestMetroStation, getTimeBetweenStation, type MetroDataWithDistance } from './metro';
 import { getDistance } from './distance';
@@ -81,6 +82,8 @@ import { type TrashCarData, getNearestTrashCarLocations } from './trash';
 import { useUserStore } from '../stores/user';
 import { getTransitRoute, type TransitRoute } from './route_planning';
 import { getCoordinatesByPlaceName } from './getCoordinates';
+import { query_db } from './db';
+// console.log(query_db("忘記密碼怎麼辦？"))
 const userStore = useUserStore();
 let userName = 'Guest';
 
@@ -260,17 +263,17 @@ async function fetchAllRoutesToDestination(origin: string, destination: string, 
     loading.value = true;
     try {
         return await getTransitRoute(origin, destination, mode, MapapiKey);
-
-        // results.forEach((result, index) => {
-        //     chatHistory.value.push({
-        //         id: Date.now(),
-        //         isUser: false,
-        //         content: `交通方式（${modes[index]}）找到的路線：${JSON.stringify(result.routes)}`,
-        //         locations: []
-        //     });
-        // });
     } catch (error) {
         console.error('Error fetching route:', error);
+        return null;
+    }
+}
+
+async function get_db(query: string) {
+    try{
+        return await query_db(query);
+    } catch (error){
+        console.error('Error fetching query:', error);
         return null;
     }
 }
@@ -447,6 +450,20 @@ const functionDeclarations = [
             required: ["appName"]
         }
     },
+    {
+        name: 'get_db',
+        description: '此工具可以獲取有關台北通的資訊，若使用此工具請整合答案後再回答',
+        parameters: {
+            type: 'object',
+            properties: {
+                query: {
+                    type: 'string',
+                    description: '要問的問題'
+                },
+            },
+            required: ['query']
+        }
+    },
 ];
 
 const functions = {
@@ -461,6 +478,7 @@ const functions = {
     getCoordinates,
     fetchAllRoutesToDestination,
     getServices,
+    get_db
 };
 
 const apiKey = import.meta.env.VITE_OPENAI_API_KEY;
@@ -581,6 +599,8 @@ const sendMessage = async () => {
                     functionResult = await functions[functionName](functionArgs.station_1, functionArgs.station_2);
                 }else if(functionName === 'getCoordinates'){
                     functionResult = await functions[functionName](functionArgs.location);
+                }else if (functionName === 'get_db'){
+                    functionResult = await functions[functionName](functionArgs.query);
                 }
                 else {
                     functionResult = await functions[functionName](functionArgs.k);
