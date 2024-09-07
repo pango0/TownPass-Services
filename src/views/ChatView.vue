@@ -445,6 +445,18 @@ const scrollToBottom = () => {
 };
 
 onMounted(() => {
+    userName = userStore.user?.realName ?? '';
+  console.log(userName);
+    const welcomeMessage = `${userName}您好，請問需要什麼服務嗎？`;
+  chatHistory.value.push({
+    id: Date.now(),
+    isUser: false,
+    content: welcomeMessage,
+    locations: []
+  });
+  return{
+    message:"${welcomeMessage}"
+  };
     scrollToBottom();
 });
 </script>
