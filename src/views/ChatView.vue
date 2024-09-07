@@ -347,30 +347,28 @@ async function getServices(appName: string): Promise<{ text: string; url: string
     return desc[appName];
 }
 
-async function findRentableStation(k: number): Promise<YouBikeDataWithDistance[] | null> {
+async function findRentableStation(k: number, lat:number, long:number): Promise<YouBikeDataWithDistance[] | null> {
     try {
-        initGeolocation();
-        return await getNearestRentableStation(k);
+        return await getNearestRentableStation(k, lat, long);
     } catch (error) {
         console.error('Error finding nearest rentable station:', error);
         return null;
     }
 }
 
-async function findReturnableStation(k: number): Promise<YouBikeDataWithDistance[] | null> {
+async function findReturnableStation(k: number, lat:number, long:number): Promise<YouBikeDataWithDistance[] | null> {
     try {
-        initGeolocation();
-        return await getNearestReturnableStation(k);
+        return await getNearestReturnableStation(k, lat, long);
     } catch (error) {
         console.error('Error finding nearest returnable station:', error);
         return null;
     }
 }
 
-async function findNearestMetroStation(k: number): Promise<MetroDataWithDistance[] | null> {
+async function findNearestMetroStation(k: number, lat: number, long: number): Promise<MetroDataWithDistance[] | null> {
     try {
-        initGeolocation();
-        return await getNearestMetroStation(k);
+        // initGeolocation();
+        return await getNearestMetroStation(k, lat, long);
     } catch (error) {
         console.error('Error finding nearest metro station:', error);
         return null;
@@ -460,44 +458,69 @@ const functionDeclarations = [
     {
         name: 'findRentableStation',
         description:
-            "This tool is used to get the kth nearest YouBike station's data where there are available bikes to rent from the user.",
+            "This tool is used to get the kth nearest YouBike station's data from a location where there are available bikes to rent from the user.",
         parameters: {
             type: 'object',
             properties: {
                 k: {
                     type: 'number',
                     description: 'This parameter is the number of stations you want to retrieve.'
+                },
+                lat:{
+                    type: 'number',
+                    description: 'This is the latitude of the location'
+                },
+                long:{
+                    type: 'number',
+                    description: 'This is the longtitude of the location'
                 }
             },
-            required: ['k']
+            required: ['k', 'lat', 'long']
         }
     },
     {
         name: 'findReturnableStation',
         description:
-            "This tool is used to get the kth nearest YouBike station's data where there are available vacancies to return the bikes from the user.",
+            "This tool is used to get the kth nearest YouBike station's data from a location where there are available vacancies to return the bikes from the user.",
         parameters: {
             type: 'object',
             properties: {
                 k: {
                     type: 'number',
                     description: 'This parameter is k.'
+                },
+                lat:{
+                    type: 'number',
+                    description: 'This is the latitude of the location'
+                },
+                long:{
+                    type: 'number',
+                    description: 'This is the longtitude of the location'
                 }
             },
-            required: ['k']
+            required: ['k', 'lat', 'long']
         }
     },
     {
         name: 'findNearestMetroStation',
-        description: "Get the kth nearest Metro station's data, including the distance from the user.",
+        description: "Get the kth nearest Metro station's data from a location, including the distance from the user.",
         parameters: {
             type: 'object',
             properties: {
                 k: {
                     type: 'number',
                     description: 'This parameter is the number of stations you want to retrieve.'
+                },
+                lat:{
+                    type: 'number',
+                    description: 'This parameter is the latitude of the location'
+                },
+                long:{
+                    type: 'number',
+                    description: 'This parameter is the longtitude of the location'
                 }
-            }
+            },
+            required: ['k', 'lat', 'long']
         }
     },
     {
@@ -674,7 +697,7 @@ const SYSTEM_PROMPT = `你是一位台北市的助理，你叫做「台北通智
 愛遊動物園: 動物園區資訊導覽、線上地圖
 智慧客服: 台北通智慧客服機器人
 
-請用繁體中文回答問題.`;
+請用繁體中文回答問題.請透過函式呼叫一步一步得到答案，請勿放棄`;
 const sendMessage = async () => {
     if (userInput.value.trim() === '') return;
     loading.value = true;
@@ -769,7 +792,7 @@ const sendMessage = async () => {
                     functionResult = await functions[functionName](functionArgs.query);
                 }
                 else {
-                    functionResult = await functions[functionName](functionArgs.k);
+                    functionResult = await functions[functionName](functionArgs.k, functionArgs.lat, functionArgs.long);
                 }
 
                 const locations = Array.isArray(functionResult) ? functionResult.map(item => ({
@@ -798,11 +821,15 @@ const sendMessage = async () => {
                             ...(result.choices[0].message.content != null ? [{ role: 'assistant', content: result.choices[0].message.content }] : []),
                             { role: 'assistant', content: '相關資訊：' + JSON.stringify(functionResult) }
                         ],
+                        functions: functionDeclarations, // Pass any function declarations
+                        function_call: 'auto',
                     })
                 });
-
+                
                 const followUpResponse = await followUpResult.json();
+                console.log(followUpResponse)
                 chatHistory.value.push({
+
                     id: Date.now(),
                     isUser: false,
                     content: followUpResponse.choices[0].message.content,

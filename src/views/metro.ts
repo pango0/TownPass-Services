@@ -75,15 +75,15 @@ function initGeolocation(): Promise<void> {
     });
 }
 
-export async function fetchMetroData(): Promise<MetroDataWithDistance[]> {
+export async function fetchMetroData(lat:number, long:number): Promise<MetroDataWithDistance[]> {
     const url = 'https://tdx.transportdata.tw/api/basic/v2/Rail/Metro/Station/TRTC';
 
     try {
-        await initGeolocation();
+        // await initGeolocation();
 
-        if (userLatitude === null || userLongitude === null) {
-            throw new Error("Unable to get user location");
-        }
+        // if (userLatitude === null || userLongitude === null) {
+        //     throw new Error("Unable to get user location");
+        // }
 
         const response = await fetch(url);
 
@@ -95,7 +95,7 @@ export async function fetchMetroData(): Promise<MetroDataWithDistance[]> {
 
         const dataWithDistance: MetroDataWithDistance[] = data.map(station => ({
             ...station,
-            distance: getDistance(userLatitude!, userLongitude!, station.StationPosition.PositionLat, station.StationPosition.PositionLon),
+            distance: getDistance(lat!, long!, station.StationPosition.PositionLat, station.StationPosition.PositionLon),
             latitude: station.StationPosition.PositionLat,
             longitude: station.StationPosition.PositionLon,
             title: station.StationName.Zh_tw,
@@ -107,9 +107,9 @@ export async function fetchMetroData(): Promise<MetroDataWithDistance[]> {
     }
 }
 
-export async function getNearestMetroStation(k: number): Promise<(MetroDataWithDistance)[] | null> {
+export async function getNearestMetroStation(k: number, lat:number, long:number): Promise<(MetroDataWithDistance)[] | null> {
     try {
-        const stations = await fetchMetroData();
+        const stations = await fetchMetroData(lat, long);
 
         if (stations.length === 0) {
             return null;

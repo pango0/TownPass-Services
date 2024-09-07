@@ -26,9 +26,6 @@ export interface YouBikeDataWithDistance extends YouBikeData {
   title: string;
 }
 
-let userLatitude: number | null = null;
-let userLongitude: number | null = null;
-
 function getDistance(lat1: number, lon1: number, lat2: number, lon2: number): number {
   const R = 6371;
   const dLat = (lat2 - lat1) * (Math.PI / 180);
@@ -43,34 +40,10 @@ function getDistance(lat1: number, lon1: number, lat2: number, lon2: number): nu
   return R * c;
 }
 
-function initGeolocation(): Promise<void> {
-  return new Promise((resolve, reject) => {
-    if (navigator.geolocation) {
-      navigator.geolocation.getCurrentPosition(
-        (position) => {
-          userLatitude = position.coords.latitude;
-          userLongitude = position.coords.longitude;
-          resolve();
-        },
-        (error) => {
-          reject(error);
-        }
-      );
-    } else {
-      reject(new Error('Geolocation is not supported by this browser.'));
-    }
-  });
-}
-
-export async function fetchYouBikeDataWithDistance(): Promise<YouBikeDataWithDistance[]> {
+export async function fetchYouBikeDataWithDistance(lat:number, long:number): Promise<YouBikeDataWithDistance[]> {
   const url = 'https://tcgbusfs.blob.core.windows.net/dotapp/youbike/v2/youbike_immediate.json';
 
   try {
-    await initGeolocation();
-
-    if (userLatitude === null || userLongitude === null) {
-      throw new Error('Unable to get user location');
-    }
 
     const response = await fetch(url);
 
@@ -83,7 +56,7 @@ export async function fetchYouBikeDataWithDistance(): Promise<YouBikeDataWithDis
     const dataWithDistance: YouBikeDataWithDistance[] = data.map((station) => ({
       ...station,
       sna: station.sna.slice('YouBike2.0_'.length),
-      distance: getDistance(userLatitude!, userLongitude!, station.latitude, station.longitude),
+      distance: getDistance(lat!, long!, station.latitude, station.longitude),
       title: station.sna.slice('YouBike2.0_'.length),
       latitude: station.latitude,
       longitude: station.longitude
@@ -97,10 +70,10 @@ export async function fetchYouBikeDataWithDistance(): Promise<YouBikeDataWithDis
 }
 
 export async function getNearestRentableStation(
-  k: number
+  k: number, lat: number, long: number
 ): Promise<YouBikeDataWithDistance[] | null> {
   try {
-    const stations = await fetchYouBikeDataWithDistance();
+    const stations = await fetchYouBikeDataWithDistance(lat, long);
 
     const rentableStations = stations.filter((station) => station.available_rent_bikes > 0);
 
@@ -118,10 +91,10 @@ export async function getNearestRentableStation(
 }
 
 export async function getNearestReturnableStation(
-  k: number
+  k: number, lat: number, long: number
 ): Promise<YouBikeDataWithDistance[] | null> {
   try {
-    const stations = await fetchYouBikeDataWithDistance();
+    const stations = await fetchYouBikeDataWithDistance(lat, long);
 
     const returnableStations = stations.filter((station) => station.available_return_bikes > 0);
 
