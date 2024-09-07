@@ -1,115 +1,68 @@
 <template>
-  <div
-    class="flex flex-col h-screen max-w-2xl mx-auto bg-white shadow-lg rounded-lg overflow-hidden"
-  >
-    <header class="flex justify-between items-center bg-white p-4">
-      <h1 class="text-3xl font-bold text-tiffany-blue">人工智慧助理</h1>
-      <router-link to="/settings" class="text-[#71b2c2] hover:text-tiffany-blue">
-        <svg
-          xmlns="http://www.w3.org/2000/svg"
-          class="h-6 w-6"
-          fill="none"
-          viewBox="0 0 24 24"
-          stroke="currentColor"
-        >
-          <path
-            stroke-linecap="round"
-            stroke-linejoin="round"
-            stroke-width="2"
-            d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"
-          />
-          <path
-            stroke-linecap="round"
-            stroke-linejoin="round"
-            stroke-width="2"
-            d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"
-          />
-        </svg>
-      </router-link>
-    </header>
-    <div class="flex-grow overflow-y-auto p-4 space-y-4" ref="chatContainer">
-      <div
-        v-for="message in chatHistory"
-        :key="message.id"
-        class="p-3 rounded-lg"
-        :class="message.isUser ? 'bg-tiffany-blue text-white' : 'bg-gray-100'"
-      >
-        <p class="font-semibold">{{ message.isUser ? '你' : '人工智慧助理' }}:</p>
-        <div v-if="message.isUser" class="mt-1">{{ message.content }}</div>
-        <div
-          v-else
-          v-html="renderMarkdown(message.content)"
-          class="mt-1 prose prose-sm max-w-none"
-        ></div>
-        <div v-for="location in message.locations" :key="location.latitude" style="padding: 12px">
-          <div>
-            <span v-if="location.functionName === 'findNearestMetroStation'">捷運地圖：</span>
-            <span
-              v-else-if="
-                location.functionName === 'findReturnableStation' ||
-                location.functionName === 'findRentableStation'
-              "
-            >
-              YouBike地圖：
-            </span>
-          </div>
+    <div class="flex flex-col h-screen max-w-2xl mx-auto bg-white shadow-lg rounded-lg overflow-hidden">
+        <header class="flex justify-between items-center bg-white p-4">
+            <h1 class="text-3xl font-bold text-tiffany-blue">人工智慧助理</h1>
+            <router-link to="/settings" class="text-[#71b2c2] hover:text-tiffany-blue">
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24"
+                    stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                        d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                        d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                </svg>
+            </router-link>
+        </header>
+        <div class="flex-grow overflow-y-auto p-4 space-y-4" ref="chatContainer">
+            <div v-for="message in chatHistory" :key="message.id" class="p-3 rounded-lg"
+                :class="message.isUser ? 'bg-tiffany-blue text-white' : 'bg-gray-100'">
+                <p class="font-semibold">{{ message.isUser ? '你' : '人工智慧助理' }}:</p>
+                <div v-if="message.isUser" class="mt-1">{{ message.content }}</div>
+                <div v-else v-html="renderMarkdown(message.content)" class="mt-1 prose prose-sm max-w-none"></div>
+                <div v-for="location in message.locations" :key="location.latitude" style="padding: 12px">
+                    <div>
+                        <span v-if="location.functionName === 'findNearestMetroStation'">捷運地圖：</span>
+                        <span v-else-if="
+                            location.functionName === 'findReturnableStation' ||
+                            location.functionName === 'findRentableStation'
+                        ">
+                            YouBike地圖：
+                        </span>
+                    </div>
 
-          <iframe
-            class="w-full h-[300px] rounded-lg"
-            height="300"
-            style="border: 0"
-            loading="lazy"
-            allowfullscreen
-            referrerpolicy="no-referrer-when-downgrade"
-            :src="`https://www.google.com/maps/embed/v1/directions?key=AIzaSyCpQnECnOpwD9-XT_Jah9o5qlqBHChW7IU
-    &origin=${userLatitude},${userLongitude}&destination=${location.latitude},${location.longitude}&mode=walking`"
-          ></iframe>
+                    <iframe class="w-full h-[300px] rounded-lg" height="300" style="border: 0" loading="lazy"
+                        allowfullscreen referrerpolicy="no-referrer-when-downgrade"
+                        :src="`https://www.google.com/maps/embed/v1/directions?key=AIzaSyCpQnECnOpwD9-XT_Jah9o5qlqBHChW7IU
+    &origin=${userLatitude},${userLongitude}&destination=${location.latitude},${location.longitude}&mode=walking`"></iframe>
+                </div>
+            </div>
         </div>
-      </div>
+        <div class="p-4 bg-white border-t border-gray-200">
+            <div class="overflow-x-auto whitespace-nowrap mb-4">
+                <button v-for="query in commonQueries" :key="query" @click="sendCommonQuery(query)"
+                    class="inline-block px-3 py-1 mr-2 text-sm bg-white-200 text-gray-700 rounded-full border border-[#0abab5] hover:bg-gray-300 transition-colors">
+                    {{ query }}
+                </button>
+            </div>
+            <form class="flex items-center" @submit="sendMessage">
+                <input v-model="userInput" :disabled="loading"
+                    class="flex-grow h-10 px-4 border border-tiffany-blue rounded-full focus:outline-none focus:ring-2 focus:ring-tiffany-blue"
+                    placeholder="輸入你的問題" />
+                <button @click="sendMessage" :disabled="loading"
+                    class="ml-2 bg-tiffany-blue text-white h-10 w-10 rounded-full hover:bg-tiffany-blue-dark transition-colors flex items-center justify-center">
+                    <template v-if="loading">
+                        <span class="loader"></span>
+                    </template>
+                    <template v-else>
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 transform rotate-90" viewBox="0 0 20 20"
+                            fill="currentColor">
+                            <path
+                                d="M10.894 2.553a1 1 0 00-1.788 0l-7 14a1 1 0 001.169 1.409l5-1.429A1 1 0 009 15.571V11a1 1 0 112 0v4.571a1 1 0 00.725.962l5 1.428a1 1 0 001.17-1.408l-7-14z" />
+                        </svg>
+                    </template>
+                </button>
+            </form>
+        </div>
     </div>
-    <div class="p-4 bg-white border-t border-gray-200">
-      <div class="overflow-x-auto whitespace-nowrap mb-4">
-        <button
-          v-for="query in commonQueries"
-          :key="query"
-          @click="sendCommonQuery(query)"
-          class="inline-block px-3 py-1 mr-2 text-sm bg-white-200 text-gray-700 rounded-full border border-[#0abab5] hover:bg-gray-300 transition-colors"
-        >
-          {{ query }}
-        </button>
-      </div>
-      <div class="flex items-center">
-        <input
-          v-model="userInput"
-          @keyup.enter="sendMessage"
-          :disabled="loading"
-          class="flex-grow h-10 px-4 border border-tiffany-blue rounded-full focus:outline-none focus:ring-2 focus:ring-tiffany-blue"
-          placeholder="輸入你的問題"
-        />
-        <button
-          @click="sendMessage"
-          :disabled="loading"
-          class="ml-2 bg-tiffany-blue text-white h-10 w-10 rounded-full hover:bg-tiffany-blue-dark transition-colors flex items-center justify-center"
-        >
-          <template v-if="loading">
-            <span class="loader"></span>
-          </template>
-          <template v-else>
-            <svg
-              xmlns="http://www.w3.org/2000/svg"
-              class="h-5 w-5 transform rotate-90"
-              viewBox="0 0 20 20"
-              fill="currentColor"
-            >
-              <path
-                d="M10.894 2.553a1 1 0 00-1.788 0l-7 14a1 1 0 001.169 1.409l5-1.429A1 1 0 009 15.571V11a1 1 0 112 0v4.571a1 1 0 00.725.962l5 1.428a1 1 0 001.17-1.408l-7-14z"
-              />
-            </svg>
-          </template>
-        </button>
-      </div>
-    </div>
-  </div>
 </template>
 
 
@@ -136,60 +89,60 @@ let userLatitude: number | null = null;
 let userLongitude: number | null = null;
 
 const commonQueries = ref([
-  '附近有哪裡可以租YouBike？',
-  '附近有哪裡可以還YouBike？',
-  '最近的捷運站在哪裡？',
-  '台北市有哪些景點推薦？',
-  '今天天氣如何？',
-  '最近的垃圾車地點在哪裡？'
+    '附近有哪裡可以租YouBike？',
+    '附近有哪裡可以還YouBike？',
+    '最近的捷運站在哪裡？',
+    '台北市有哪些景點推薦？',
+    '今天天氣如何？',
+    '最近的垃圾車地點在哪裡？'
 ]);
 const sendCommonQuery = (query: string) => {
-  userInput.value = query;
-  sendMessage();
+    userInput.value = query;
+    sendMessage();
 };
 
 function initGeolocation(): Promise<void> {
-  return new Promise((resolve, reject) => {
-    if (navigator.geolocation) {
-      navigator.geolocation.getCurrentPosition(
-        (position) => {
-          userLatitude = position.coords.latitude;
-          userLongitude = position.coords.longitude;
-          resolve();
-        },
-        (error) => {
-          reject(error);
+    return new Promise((resolve, reject) => {
+        if (navigator.geolocation) {
+            navigator.geolocation.getCurrentPosition(
+                (position) => {
+                    userLatitude = position.coords.latitude;
+                    userLongitude = position.coords.longitude;
+                    resolve();
+                },
+                (error) => {
+                    reject(error);
+                }
+            );
+        } else {
+            reject(new Error('Geolocation is not supported by this browser.'));
         }
-      );
-    } else {
-      reject(new Error('Geolocation is not supported by this browser.'));
-    }
-  });
+    });
 }
 let origin: string = '';
 let destination: string = '';
 function fetchOriginDestination(message: string) {
-  const originMatch = message.match(/從\s*(\S+)/); // Match after "從"
-  const destinationMatch = message.match(/到\s*(\S+)/); // Match after "到"
+    const originMatch = message.match(/從\s*(\S+)/); // Match after "從"
+    const destinationMatch = message.match(/到\s*(\S+)/); // Match after "到"
 
-  origin = originMatch ? originMatch[1] : '';
-  destination = destinationMatch ? destinationMatch[1] : '';
+    origin = originMatch ? originMatch[1] : '';
+    destination = destinationMatch ? destinationMatch[1] : '';
 }
 
 const MapapiKey = import.meta.env.VITE_GoogleMap_API_KEY;;
 
 const userInput = ref('');
 const chatHistory = ref<
-  Array<{
-    id: number;
-    isUser: boolean;
-    content: string;
-    locations: Array<{
-      functionName: string;
-      latitude: number;
-      longitude: number;
-    }>;
-  }>
+    Array<{
+        id: number;
+        isUser: boolean;
+        content: string;
+        locations: Array<{
+            functionName: string;
+            latitude: number;
+            longitude: number;
+        }>;
+    }>
 >([]);
 const loading = ref(false);
 const chatContainer = ref<HTMLElement | null>(null);
@@ -208,24 +161,60 @@ async function getWeather(locationName: string): Promise<BotResponse> {
     }
 }
 
+async function getServices(appName: string): Promise<{ description: string; url: string; }> {
+    const serviceDescription = {
+        "1999": "播打網路語音通話",
+        "申辦服務": "線上申辦市政府服務個項目（市民）",
+        "有話要說": "陳情系統",
+        "臨櫃叫號": "臨櫃服務查看叫號、預約",
+        "網路投票": "收集民意，促進民眾參與市政服務",
+        "市民儀表板": "提供臺北市生活的重要數據",
+        "意見調查": "了解民眾與台北市互動體驗調查",
+        "警政服務": "提供線上、語音報案",
+        "里辦服務": "提供居民更即時在地區里服務",
+        "疫苗預約": "預約Covid-19、流感疫苗施打",
+        "聯醫掛號": "北市聯合醫院各院區線上掛號",
+        "台北電台": "線上即時收聽-臺北廣播電台",
+        "親子館": "線上預約各區親子館活動報名",
+        "簡單森呼吸": "提供綠化地圖資訊",
+        "寵物安心遛": "提供寵物友善地圖資訊",
+        "用水服務": "繳交水費、查詢或自報用水度數",
+        "民生物資": "提供北市民生物資交易量與金額",
+        "圖書借閱": "市立圖書館借閱服務",
+        "找地點": "提供各區日常服務地圖查找",
+        "愛遊動物園": "動物園區資訊導覽、線上地圖",
+        "智慧客服": "台北通智慧客服機器人"
+    }
+    const serviceUrls: { [key: string]: string } = {
+        "申辦服務": 'https://taipei-pass-service.vercel.app/',
+        "市民儀表板": 'https://dashboard.gov.taipei/',
+        "找地點": 'https://taipei-pass-service.vercel.app/surrounding-service/'
+    };
+
+    return {
+        description: serviceDescription[appName] || '',
+        url: serviceUrls[appName] || "https://townpass.taipei/"
+    };
+}
+
 async function findRentableStation(k: number): Promise<YouBikeDataWithDistance[] | null> {
-  try {
-    initGeolocation();
-    return await getNearestRentableStation(k);
-  } catch (error) {
-    console.error('Error finding nearest rentable station:', error);
-    return null;
-  }
+    try {
+        initGeolocation();
+        return await getNearestRentableStation(k);
+    } catch (error) {
+        console.error('Error finding nearest rentable station:', error);
+        return null;
+    }
 }
 
 async function findReturnableStation(k: number): Promise<YouBikeDataWithDistance[] | null> {
-  try {
-    initGeolocation();
-    return await getNearestReturnableStation(k);
-  } catch (error) {
-    console.error('Error finding nearest returnable station:', error);
-    return null;
-  }
+    try {
+        initGeolocation();
+        return await getNearestReturnableStation(k);
+    } catch (error) {
+        console.error('Error finding nearest returnable station:', error);
+        return null;
+    }
 }
 
 async function findNearestMetroStation(k: number): Promise<MetroDataWithDistance[] | null> {
@@ -239,57 +228,57 @@ async function findNearestMetroStation(k: number): Promise<MetroDataWithDistance
 }
 
 async function findDistance(lat1: number, lon1: number): Promise<any | null> {
-  try {
-    initGeolocation();
-    return await getDistance(lat1, lon1, userLatitude, userLongitude);
-  } catch (error) {
-    console.error('Error finding nearest metro station:', error);
-    return null;
-  }
+    try {
+        initGeolocation();
+        return await getDistance(lat1, lon1, userLatitude, userLongitude);
+    } catch (error) {
+        console.error('Error finding nearest metro station:', error);
+        return null;
+    }
 }
 
 async function searchGoogle(query: string): Promise<any | null> {
-  try {
-    return await googleSearch(query);
-  } catch (error) {
-    console.error('Error searching Google:', error);
-    return null;
-  }
+    try {
+        return await googleSearch(query);
+    } catch (error) {
+        console.error('Error searching Google:', error);
+        return null;
+    }
 }
 
 async function findTrashCarLocation(k: number): Promise<TrashCarData[] | null> {
-  try {
-    await initGeolocation();
-    return await getNearestTrashCarLocations(k);
-  } catch (error) {
-    console.error('Error fetching trash car locations:', error);
-    return [];
-  }
+    try {
+        await initGeolocation();
+        return await getNearestTrashCarLocations(k);
+    } catch (error) {
+        console.error('Error fetching trash car locations:', error);
+        return [];
+    }
 }
 
 async function fetchAllRoutesToDestination(message: string): Promise<void> {
-  fetchOriginDestination(message);
-  loading.value = true;
-  try {
-    const modes = ['driving', 'walking', 'bicycling', 'transit'];
+    fetchOriginDestination(message);
+    loading.value = true;
+    try {
+        const modes = ['driving', 'walking', 'bicycling', 'transit'];
 
-    const results = await Promise.all(
-      modes.map((mode) => getTransitRoute(origin, destination, mode, MapapiKey))
-    );
+        const results = await Promise.all(
+            modes.map((mode) => getTransitRoute(origin, destination, mode, MapapiKey))
+        );
 
-    results.forEach((result, index) => {
-      chatHistory.value.push({
-        id: Date.now(),
-        isUser: false,
-        content: `交通方式（${modes[index]}）找到的路線：${JSON.stringify(result.routes)}`,
-        locations: []
-      });
-    });
-  } catch (error) {
-    console.error('Failed to fetch routes:', error);
-  } finally {
-    loading.value = false;
-  }
+        results.forEach((result, index) => {
+            chatHistory.value.push({
+                id: Date.now(),
+                isUser: false,
+                content: `交通方式（${modes[index]}）找到的路線：${JSON.stringify(result.routes)}`,
+                locations: []
+            });
+        });
+    } catch (error) {
+        console.error('Failed to fetch routes:', error);
+    } finally {
+        loading.value = false;
+    }
 }
 
 const functionDeclarations = [
@@ -394,35 +383,94 @@ const functionDeclarations = [
         }
     },
     {
-      name: 'fetchAllRoutesToDestination',
-      description: 'give the possible route from origin to destination',
-      parameters: {
-        type: 'object',
-        properties: {
-          message: {
-            type: 'string',
-            description: 'This parameter is used for get the complete query message of the user'
-          }
+        name: 'fetchAllRoutesToDestination',
+        description: 'give the possible route from origin to destination',
+        parameters: {
+            type: 'object',
+            properties: {
+                message: {
+                    type: 'string',
+                    description: 'This parameter is used for get the complete query message of the user'
+                }
+            }
         }
-      }
-    }
+    },
+    {
+        name: "getServices",
+        description: `Tool to obtain service description and link. Available service names and descriptions:
+1999: 播打網路語音通話
+申辦服務: 線上申辦市政府服務個項目（市民）
+有話要說: 陳情系統
+臨櫃叫號: 臨櫃服務查看叫號、預約
+網路投票: 收集民意，促進民眾參與市政服務
+市民儀表板: 提供臺北市生活的重要數據
+意見調查: 了解民眾與台北市互動體驗調查
+警政服務: 提供線上、語音報案
+里辦服務: 提供居民更即時在地區里服務
+疫苗預約: 預約Covid-19、流感疫苗施打
+聯醫掛號: 北市聯合醫院各院區線上掛號
+台北電台: 線上即時收聽-臺北廣播電台
+親子館: 線上預約各區親子館活動報名
+簡單森呼吸: 提供綠化地圖資訊
+寵物安心遛: 提供寵物友善地圖資訊
+用水服務: 繳交水費、查詢或自報用水度數
+民生物資: 提供北市民生物資交易量與金額
+圖書借閱: 市立圖書館借閱服務
+找地點: 提供各區日常服務地圖查找
+愛遊動物園: 動物園區資訊導覽、線上地圖
+智慧客服: 台北通智慧客服機器人`,
+        parameters: {
+            type: "object",
+            properties: {
+                appName: {
+                    type: "string",
+                    enum: [
+                        '1999',
+                        '申辦服務',
+                        '有話要說',
+                        '臨櫃叫號',
+                        '網路投票',
+                        '市民儀表板',
+                        '意見調查',
+                        '警政服務',
+                        '里辦服務',
+                        '疫苗預約',
+                        '聯醫掛號',
+                        '台北電台',
+                        '親子館',
+                        '簡單森呼吸',
+                        '寵物安心遛',
+                        '用水服務',
+                        '民生物資',
+                        '圖書借閱',
+                        '找地點',
+                        '愛遊動物園',
+                        '智慧客服'
+                    ],
+                    description: "The name of the service the user is requesting."
+                }
+            },
+            required: ["appName"]
+        }
+    },
 ];
 
 const functions = {
-  findRentableStation,
-  findReturnableStation,
-  findNearestMetroStation,
-  // findDistance
-  searchGoogle,
-  getWeather,
-  findTrashCarLocation,
-  fetchAllRoutesToDestination
+    findRentableStation,
+    findReturnableStation,
+    findNearestMetroStation,
+    // findDistance
+    searchGoogle,
+    getWeather,
+    findTrashCarLocation,
+    fetchAllRoutesToDestination,
+    getServices,
 };
 
 const apiKey = import.meta.env.VITE_OPENAI_API_KEY;
 
 const renderMarkdown = (text: string) => {
-  return marked(text);
+    return marked(text);
 };
 
 const sendMessage = async () => {
@@ -482,33 +530,34 @@ const sendMessage = async () => {
                     functionResult = await functions[functionName](functionArgs.query);
                 } else if (functionName === 'getPosition') {
                     functionResult = await functions[functionName]();
-                }else if (functionName === 'getWeather'){
+                } else if (functionName === 'getWeather') {
                     functionResult = await functions[functionName](functionArgs.location)
-                }  else if (functionName === 'fetchAllRoutesToDestination') {
-                  const modes = ['driving', 'walking', 'bicycling', 'transit'];
-                  const allRoutes = await Promise.all(
-                    modes.map(async (mode) => {
-                      try {
-                        const routeData = await functions[functionName](query);
-                        return {
-                          mode: mode,
-                          route: routeData
-                        };
-                      } catch (err) {
-                        console.error(`Error fetching route for ${mode}:`, err);
-                        return null;
-                      }
-                    })
-                  );
+                } else if (functionName === 'fetchAllRoutesToDestination') {
+                    const modes = ['driving', 'walking', 'bicycling', 'transit'];
+                    const allRoutes = await Promise.all(
+                        modes.map(async (mode) => {
+                            try {
+                                const routeData = await functions[functionName](query);
+                                return {
+                                    mode: mode,
+                                    route: routeData
+                                };
+                            } catch (err) {
+                                console.error(`Error fetching route for ${mode}:`, err);
+                                return null;
+                            }
+                        })
+                    );
 
-                  const locations = allRoutes.flatMap((route) => {
-                    const legs = route?.route?.routes[0]?.legs[0];
-                    return legs ? [{ functionName, latitude: legs.end_location.lat, longitude: legs.end_location.lng }] : [];
-                  });
+                    const locations = allRoutes.flatMap((route) => {
+                        const legs = route?.route?.routes[0]?.legs[0];
+                        return legs ? [{ functionName, latitude: legs.end_location.lat, longitude: legs.end_location.lng }] : [];
+                    });
 
-                  functionResult = { name: functionName, data: allRoutes, locations };
-                }  
-                else {
+                    functionResult = { name: functionName, data: allRoutes, locations };
+                } else if (functionName === 'getServices') {
+                    functionResult = await functions[functionName](functionArgs.appName);
+                } else {
                     functionResult = await functions[functionName](functionArgs.k);
                 }
 
@@ -517,6 +566,8 @@ const sendMessage = async () => {
                     latitude: item.latitude,
                     longitude: item.longitude,
                 })) : [];
+
+                console.log(functionResult);
 
                 // Send function result back to chat model
                 const followUpResult = await fetch('https://api.openai.com/v1/chat/completions', {
@@ -533,7 +584,7 @@ const sendMessage = async () => {
                                 role: chat.isUser ? 'user' : 'system',
                                 content: chat.content
                             })).slice(-5),
-                            { role: 'user', content: '這是相關的資訊：' + JSON.stringify(functionResult) }
+                            { role: 'assistant', content: '相關資訊：' + JSON.stringify(functionResult) }
                         ],
                     })
                 });
@@ -582,7 +633,6 @@ onMounted(() => {
     return {
         message: "${welcomeMessage}"
     };
-    scrollToBottom();
 });
 </script>
 
