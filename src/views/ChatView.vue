@@ -123,7 +123,7 @@ const chatHistory = ref<Array<{
 }>>([]);
 const loading = ref(false);
 const chatContainer = ref<HTMLElement | null>(null);
-async function getService(appName: string): Promise<{message: string} | null> {
+async function getServices(appName: string): Promise<{message: string} | null> {
     const serviceUrls: { [key: string]: string } = {
         "申辦服務": 'https://taipei-pass-service.vercel.app/',
         "市民儀表板": 'https://dashboard.gov.taipei/',
@@ -224,18 +224,20 @@ async function searchGoogle(query: string): Promise<any | null> {
 }
 const functionDeclarations = [
 {
-    name: "getService",
-    description: "Give the service URL for the requested app based on user queries.",
+    name: "getServices",
+    description: "Fetch the service URL for the requested app based on user queries like '我要申辦服務'.",
     parameters: {
         type: "object", 
         properties: {
             appName: {
                 type: "string",
-                description: "The name of the service or app the user is requesting."
+                description: "The name of the service or app the user is requesting, for example: '申辦服務'."
             }
         },
+        required: ["appName"]
     }
 },
+
 
 
     {
@@ -329,11 +331,11 @@ const functions = {
     // findDistance
     searchGoogle,
     getWeather,
-    getService,
+    getServices,
 };
 
 const genAI = new GoogleGenerativeAI(apiKey);
-const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash", systemInstruction: "You answer questions in traditional chinese" });
+const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash", systemInstruction: "You should help anyone who wants to know more about Taipei, or finds services URL. You answer questions in traditional chinese" });
 const chat = model.startChat({ tools: [{ functionDeclarations }] });
 
 const renderMarkdown = (text: string) => {
@@ -372,7 +374,7 @@ const sendMessage = async () => {
                                 location: null
                             };
                         }
-                    } else if(call.name === 'getUrl'){
+                    } else if(call.name === 'getServices'){
                         const appName = call.args['appName'];
             if (appName) {
                 const data = await functions[call.name](appName);
