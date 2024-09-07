@@ -8,14 +8,24 @@
                 <div v-else v-html="renderMarkdown(message.content)" class="mt-1 prose prose-sm max-w-none"></div>
                 <div v-for="location in message.locations" :key="location.latitude" style="padding: 12px">
                     <div>
-                        <span>
-                            {{ location.title }}
-                        </span>
+                        <span>{{ location.title }}</span>
                     </div>
-
                     <iframe class="w-full h-[300px] rounded-lg" height="300" style="border: 0" loading="lazy"
                         allowfullscreen referrerpolicy="no-referrer-when-downgrade"
                         :src="`https://www.google.com/maps/embed/v1/directions?key=AIzaSyCpQnECnOpwD9-XT_Jah9o5qlqBHChW7IU&origin=${userLatitude},${userLongitude}&destination=${location.latitude},${location.longitude}&mode=walking`"></iframe>
+                </div>
+                <div v-if="message.suggestedService != null" class="mt-4">
+                    <!-- 標題 -->
+                    <div class="text-semibold font-bold mb-2 text-gray-700">
+                        建議的服務：
+                    </div>
+                    <!-- 將整個卡片變成連結，並且使其具有外框裝飾 -->
+                    <a :href="message.suggestedService.url" target="_blank"
+                        class="inline-block p-3 bg-gray-100 rounded-lg border border-tiffany-blue shadow-lg text-tiffany-blue hover:bg-tiffany-blue transition-all duration-300 ease-in-out transform hover:scale-105">
+                        <div class="font-semibold">
+                            {{ message.suggestedService.text }}
+                        </div>
+                    </a>
                 </div>
             </div>
         </div>
@@ -26,7 +36,13 @@
                     {{ query }}
                 </button>
             </div>
-            <form class="flex items-center" @submit="sendMessage">
+            <form class="flex items-center" @submit.prevent="sendMessage">
+                <button @click="toggleVoiceInput" class="bg-gray-200 p-2 rounded-full focus:outline-none mr-2">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
+                        <path
+                            d="M10 18a3 3 0 003-3h-6a3 3 0 003 3zM7 5a3 3 0 116 0v4a3 3 0 11-6 0V5zm5 8a5 5 0 01-10 0v-1a1 1 0 012 0v1a3 3 0 006 0v-1a1 1 0 012 0v1z" />
+                    </svg>
+                </button>
                 <input v-model="userInput" :disabled="loading"
                     class="flex-grow h-10 px-4 border border-tiffany-blue rounded-full focus:outline-none focus:ring-2 focus:ring-tiffany-blue"
                     placeholder="輸入你的問題" />
@@ -150,10 +166,127 @@ const chatHistory = ref<
             latitude: number;
             longitude: number;
         }>;
+        suggestedService: {
+            text: string;
+            url: string;
+        } | null;
     }>
 >([]);
 const loading = ref(false);
 const chatContainer = ref<HTMLElement | null>(null);
+
+const recognition = new (window.SpeechRecognition || window.webkitSpeechRecognition)();
+recognition.lang = 'zh-TW'; 
+recognition.continuous = false; 
+recognition.interimResults = true;
+
+const isListening = ref(false);
+let mediaStream = null;
+
+const GOOGLE_API_KEY = import.meta.env.VITE_GoogleMap_API_KEY;
+ 
+async function startRecording() {
+    try {
+        const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+        const mediaRecorder = new MediaRecorder(stream);
+        const audioChunks: Blob[] = [];
+
+        mediaRecorder.ondataavailable = (event) => {
+            audioChunks.push(event.data);
+        };
+
+        mediaRecorder.onstop = async () => {
+            const audioBlob = new Blob(audioChunks, { type: 'audio/webm' });
+            const base64Audio = await convertBlobToBase64(audioBlob);
+
+            // Send the base64 audio to Google Cloud API
+            const transcription = await transcribeAudio(base64Audio);
+            userInput.value = transcription;
+        };
+
+        mediaRecorder.start();
+        setTimeout(() => {
+            mediaRecorder.stop();
+        }, 5000); // Record for 5 seconds
+    } catch (error) {
+        console.error('Error accessing microphone:', error);
+    }
+}
+
+function convertBlobToBase64(blob: Blob): Promise<string> {
+    return new Promise((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onloadend = () => resolve(reader.result?.toString().split(',')[1] || '');
+        reader.onerror = reject;
+        reader.readAsDataURL(blob);
+    });
+}
+
+async function transcribeAudio(base64Audio: string): Promise<string> {
+    try {
+        const response = await fetch(`https://speech.googleapis.com/v1/speech:recognize?key=${GOOGLE_API_KEY}`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+                config: {
+                    encoding: 'WEBM_OPUS',  // Verify if 'WEBM_OPUS' is the correct format
+                    sampleRateHertz: 48000, // Ensure the sample rate matches your audio
+                    languageCode: 'zh-TW'   // Language code for Traditional Chinese
+                },
+                audio: {
+                    content: base64Audio    // Base64 encoded audio content
+                }
+            })
+        });
+
+        const data = await response.json();
+        
+        if (response.ok && data.results) {
+            return data.results[0]?.alternatives[0]?.transcript || 'Transcription failed.';
+        } else {
+            console.error('Error in transcription response:', data);
+            return 'Transcription failed.';
+        }
+    } catch (error) {
+        console.error('Error transcribing audio:', error);
+        return 'Error transcribing audio.';
+    }
+}
+
+
+const toggleVoiceInput = async () => {
+    if (isListening.value) {
+        stopVoiceInput();
+    } else {
+        try {
+            await startVoiceInput();
+            startRecording();  // Start recording here
+        } catch (error) {
+            console.error('Error starting voice input:', error);
+            alert('Unable to access the microphone. Please check your browser settings.');
+        }
+    }
+};
+
+const startVoiceInput = async () => {
+    try {
+        mediaStream = await navigator.mediaDevices.getUserMedia({ audio: true });
+        console.log('Microphone access granted');
+        isListening.value = true;
+    } catch (error) {
+        console.error('Error accessing microphone:', error);
+        alert('Failed to access the microphone. Please check your browser settings.');
+    }
+};
+
+const stopVoiceInput = () => {
+    if (mediaStream) {
+        mediaStream.getTracks().forEach(track => track.stop());
+    }
+    isListening.value = false;
+};
 
 async function getWeather(locationName: string): Promise<BotResponse> {
     // Replace with actual weather API URL
@@ -169,7 +302,7 @@ async function getWeather(locationName: string): Promise<BotResponse> {
     }
 }
 
-async function getServices(appName: string): Promise<{ text: string; url: string; }> {
+function getServiceInfo(appName: string): { text: string; url: string; } {
     const serviceUrls: { [key: string]: string } = {
         "申辦服務": 'https://taipei-pass-service.vercel.app/',
         "市民儀表板": 'https://dashboard.gov.taipei/',
@@ -180,6 +313,38 @@ async function getServices(appName: string): Promise<{ text: string; url: string
         text: appName,
         url: serviceUrls[appName] || "https://townpass.taipei/"
     };
+}
+
+async function getServices(appName: string): Promise<{ text: string; url: string; }> {
+    const serviceUrls: { [key: string]: string } = {
+        "申辦服務": 'https://taipei-pass-service.vercel.app/',
+        "市民儀表板": 'https://dashboard.gov.taipei/',
+        "找地點": 'https://taipei-pass-service.vercel.app/surrounding-service/'
+    };
+    const desc = {
+        "1999": "播打網路語音通話",
+        "申辦服務": "線上申辦市政府服務個項目（市民）",
+        "有話要說": "陳情系統",
+        "臨櫃叫號": "臨櫃服務查看叫號、預約",
+        "網路投票": "收集民意，促進民眾參與市政服務",
+        "市民儀表板": "提供臺北市生活的重要數據",
+        "意見調查": "了解民眾與台北市互動體驗調查",
+        "警政服務": "提供線上、語音報案",
+        "里辦服務": "提供居民更即時在地區里服務",
+        "疫苗預約": "預約Covid-19、流感疫苗施打",
+        "聯醫掛號": "北市聯合醫院各院區線上掛號",
+        "台北電台": "線上即時收聽-臺北廣播電台",
+        "親子館": "線上預約各區親子館活動報名",
+        "簡單森呼吸": "提供綠化地圖資訊",
+        "寵物安心遛": "提供寵物友善地圖資訊",
+        "用水服務": "繳交水費、查詢或自報用水度數",
+        "民生物資": "提供北市民生物資交易量與金額",
+        "圖書借閱": "市立圖書館借閱服務",
+        "愛遊動物園": "動物園區資訊導覽、線上地圖",
+        "智慧客服": "台北通智慧客服機器人"
+    }
+
+    return desc[appName];
 }
 
 async function findRentableStation(k: number): Promise<YouBikeDataWithDistance[] | null> {
@@ -213,9 +378,9 @@ async function findNearestMetroStation(k: number): Promise<MetroDataWithDistance
 }
 
 async function findTimeBetweenStation(station_1: string, station_2: string): Promise<any | null> {
-    try{
+    try {
         return await getTimeBetweenStation(station_1, station_2);
-    }catch(error){
+    } catch (error) {
         console.error('Error finding time between station:', error);
         return null
     }
@@ -232,9 +397,9 @@ async function findDistance(lat1: number, lon1: number): Promise<any | null> {
 }
 
 async function getCoordinates(location: string) {
-    try{
+    try {
         return await getCoordinatesByPlaceName(location);
-    } catch (error){
+    } catch (error) {
         console.error('Error finding coordinates:', error);
         return null;
     }
@@ -270,9 +435,9 @@ async function fetchAllRoutesToDestination(origin: string, destination: string, 
 }
 
 async function get_db(query: string) {
-    try{
+    try {
         return await query_db(query);
-    } catch (error){
+    } catch (error) {
         console.error('Error fetching query:', error);
         return null;
     }
@@ -509,7 +674,6 @@ const SYSTEM_PROMPT = `你是一位台北市的助理，你叫做「台北通智
 愛遊動物園: 動物園區資訊導覽、線上地圖
 智慧客服: 台北通智慧客服機器人
 
-當使用者的輸入有關這些服務，你就要推薦他服務的網址。
 請用繁體中文回答問題.`;
 const sendMessage = async () => {
     if (userInput.value.trim() === '') return;
@@ -556,6 +720,7 @@ const sendMessage = async () => {
         const functionCall = aiResponse.function_call;
         console.log(text);
         console.log(functionCall);
+        let suggestedService = null;
         if (functionCall) {
             // Process function calls
             const functionName = functionCall.name;
@@ -595,11 +760,12 @@ const sendMessage = async () => {
                     functionResult = { name: functionName, data: allRoutes, locations };
                 } else if (functionName === 'getServices') {
                     functionResult = await functions[functionName](functionArgs.appName);
-                } else if(functionName === 'findTimeBetweenStation'){
+                    suggestedService = getServiceInfo(functionArgs.appName);
+                } else if (functionName === 'findTimeBetweenStation') {
                     functionResult = await functions[functionName](functionArgs.station_1, functionArgs.station_2);
-                }else if(functionName === 'getCoordinates'){
+                } else if (functionName === 'getCoordinates') {
                     functionResult = await functions[functionName](functionArgs.location);
-                }else if (functionName === 'get_db'){
+                } else if (functionName === 'get_db') {
                     functionResult = await functions[functionName](functionArgs.query);
                 }
                 else {
@@ -640,7 +806,8 @@ const sendMessage = async () => {
                     id: Date.now(),
                     isUser: false,
                     content: followUpResponse.choices[0].message.content,
-                    locations: locations
+                    locations: locations,
+                    suggestedService
                 });
             }
         } else {
