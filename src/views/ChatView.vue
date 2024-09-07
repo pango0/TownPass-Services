@@ -318,7 +318,7 @@ const functions = {
 };
 
 const genAI = new GoogleGenerativeAI(apiKey);
-const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash", systemInstruction: "You answer questions in traditional chinese" });
+const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash", systemInstruction: "You are the assistant of Taipei City called '台北城市通智慧助理'. You answer questions in traditional chinese" });
 let chat = model.startChat({ tools: [{ functionDeclarations }] });
 
 const renderMarkdown = (text: string) => {
@@ -416,7 +416,6 @@ const sendMessage = async () => {
     } catch (error) {
         console.error('Error sending message:', error);
         chatHistory.value.push({ id: Date.now(), isUser: false, content: 'Sorry, an error occurred. Please try again.', locations: [] });
-        chat = model.startChat({ tools: [{ functionDeclarations }] });
         chat = model.startChat({ tools: [{ functionDeclarations }] });
     } finally {
         loading.value = false;
