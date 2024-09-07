@@ -45,12 +45,14 @@
                 </button>
             </div>
             <form class="flex items-center" @submit.prevent="sendMessage">
-                <button @click="toggleVoiceInput" class="bg-gray-200 p-2 rounded-full focus:outline-none mr-2">
-                    <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
-                        <path
-                            d="M10 18a3 3 0 003-3h-6a3 3 0 003 3zM7 5a3 3 0 116 0v4a3 3 0 11-6 0V5zm5 8a5 5 0 01-10 0v-1a1 1 0 012 0v1a3 3 0 006 0v-1a1 1 0 012 0v1z" />
+                <button @click="toggleVoiceInput" class="bg-tiffany-blue p-2 rounded-full focus:outline-none mr-2 hover:bg-tiffany-blue-dark transition-colors">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 text-white" fill="currentColor" viewBox="0 0 24 24">
+                        <path d="M12 14a3 3 0 003-3V5a3 3 0 10-6 0v6a3 3 0 003 3zm5-3a5 5 0 01-10 0h2a3 3 0 006 0h2zm1 3a7 7 0 01-14 0H2a9 9 0 0018 0h-2zM11 19v3h2v-3h-2z"/>
                     </svg>
                 </button>
+
+
+
                 <input v-model="userInput" :disabled="loading"
                     class="flex-grow h-10 px-4 border border-tiffany-blue rounded-full focus:outline-none focus:ring-2 focus:ring-tiffany-blue"
                     placeholder="輸入你的問題" />
