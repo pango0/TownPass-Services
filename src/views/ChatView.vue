@@ -134,7 +134,8 @@ const commonQueries = ref([
     '離我最近的捷運站在哪裡？',
     '台北市有哪些景點推薦？',
     '今天天氣如何？',
-    '離我最近的垃圾車地點在哪裡？'
+    '離我最近的垃圾車地點在哪裡？',
+    '忘記台北通密碼怎麼辦？'
 ]);
 const sendCommonQuery = (query: string) => {
     userInput.value = query;
@@ -458,16 +459,18 @@ async function get_db(query: string) {
 const functionDeclarations = [
     {
         name: 'getWeather',
-        description: 'This tool is used to get a location\'s current weather forecast, including temperature and condition.',
+        description: 'This tool is used to get a location\'s current weather forecast',
         parameters: {
             type: 'object',
             properties: {
                 location: {
                     type: 'string',
-                    description: '提供台北市的一個行政區',
+                    description: '提供台北市的一個行政區，預設為大安區',
                     enum: ["大安區", "中正區", "北投區", "士林區", "內湖區", "中山區", "大同區", "松山區", "南港區", "萬華區", "信義區", "文山區"]
                 }
-            }
+            },
+            required:['location']
+
         }
     },
     {
@@ -725,7 +728,7 @@ const SYSTEM_PROMPT = `你是一位台北市的助理，你叫做「台北通智
 圖書借閱: 市立圖書館借閱服務
 愛遊動物園: 動物園區資訊導覽、線上地圖
 智慧客服: 台北通智慧客服機器人
-
+如果使用者詢問與他位置有關的資訊，請先獲取使用者的座標
 請用繁體中文回答問題`;
 
 const sendMessage = async () => {
