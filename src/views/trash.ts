@@ -1,11 +1,14 @@
 export interface TrashCarData {
-  routeName: string;
-  location: string;
-  latitude: number;
-  longitude: number;
-  arrivalTime: string;
-  departureTime: string;
-  distance: number;
+    district: string;
+    village: string;
+    team: string;
+    carNumber: number;
+    route: string;
+    latitude: number;
+    longitude: number;
+    arrivalTime: string;
+    departureTime: string;
+    distance: number;
 }
 
 let userLatitude: number | null = null;
@@ -58,10 +61,7 @@ function isTimeInFuture(departureTime: string): boolean {
   return departureDate > now;
 }
 
-export async function fetchTrashCarDataWithDistance(): Promise<TrashCarData[]> {
-  const url =
-    'https://data.taipei/api/v1/dataset/a6e90031-7ec4-4089-afb5-361a4efe7202?scope=resourceAquire';
-
+export async function fetchTrashCarDataWithDistance(k: number): Promise<TrashCarData[]> {
   try {
     await initGeolocation();
 
@@ -69,35 +69,17 @@ export async function fetchTrashCarDataWithDistance(): Promise<TrashCarData[]> {
       throw new Error('Unable to get user location');
     }
 
-    const response = await fetch(url, {
-      method: 'GET',
-      headers: {
-        'Content-Type': 'application/json',
-        Origin: 'https://data.taipei'
-      }
+    const queryParams = new URLSearchParams({
+        latitude: userLatitude,
+        longitude: userLongitude,
+        k: k,
     });
+
+    const response = await fetch(`http://localhost:3000/trash?${queryParams.toString()}`);
     if (!response.ok) throw new Error(`Error: ${response.statusText}`);
 
-    const data = await response.json();
-
-    const trashCarData: TrashCarData[] = data.result.results
-      .filter((entry: any) => isTimeInFuture(entry['離開時間']))
-      .map((entry: any) => ({
-        routeName: entry['路線'] || '',
-        location: entry['地點'] || '',
-        latitude: parseFloat(entry['經度']) || 0,
-        longitude: parseFloat(entry['緯度']) || 0,
-        arrivalTime: entry['抵達時間'] || '',
-        departureTime: entry['離開時間'] || '',
-        distance: getDistance(
-          userLatitude!,
-          userLongitude!,
-          parseFloat(entry['緯度']),
-          parseFloat(entry['經度'])
-        )
-      }));
-
-    return trashCarData;
+    const data: TrashCarData[] = await response.json();
+    return data;
   } catch (error) {
     console.error('Failed to fetch trash car data:', error);
     return [];
@@ -106,15 +88,12 @@ export async function fetchTrashCarDataWithDistance(): Promise<TrashCarData[]> {
 
 export async function getNearestTrashCarLocations(k: number): Promise<TrashCarData[] | null> {
   try {
-    const trashCarData = await fetchTrashCarDataWithDistance();
+    const trashCarData = await fetchTrashCarDataWithDistance(k);
 
     if (trashCarData.length === 0) {
       return null;
     }
-
-    const sortedData = trashCarData.sort((a, b) => a.distance - b.distance).slice(0, k);
-
-    return sortedData;
+    return trashCarData;
   } catch (error) {
     console.error('Error finding nearest trash car locations:', error);
     return null;
