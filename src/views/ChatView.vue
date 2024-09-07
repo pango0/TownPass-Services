@@ -134,11 +134,12 @@ const chatHistory = ref<
 const loading = ref(false);
 const chatContainer = ref<HTMLElement | null>(null);
 
-async function getWeather(): Promise<BotResponse> {
+async function getWeather(locationName: string): Promise<BotResponse> {
     // Replace with actual weather API URL
     try {
-        initGeolocation();
-        return await fetchWeatherData();
+        // initGeolocation();
+        console.log(locationName)
+        return await fetchWeatherData(locationName);
     } catch (error) {
         console.error('Error fetching weather:', error);
         return {
@@ -209,13 +210,13 @@ async function findTrashCarLocation(k: number): Promise<TrashCarData[] | null> {
 const functionDeclarations = [
     {
         name: 'getWeather',
-        description: 'This tool is used to get the current weather forecast, including temperature and condition.',
+        description: 'This tool is used to get a location\'s current weather forecast, including temperature and condition.',
         parameters: {
             type: 'object',
             properties: {
-                k: {
+                location: {
                     type: 'string',
-                    description: 'This parameter is not used but is required by the API.'
+                    description: 'This is the location you want to know the weather.'
                 }
             }
         }
@@ -389,6 +390,8 @@ const sendMessage = async () => {
                     functionResult = await functions[functionName](functionArgs.query);
                 } else if (functionName === 'getPosition') {
                     functionResult = await functions[functionName]();
+                }else if (functionName === 'getWeather'){
+                    functionResult = await functions[functionName](functionArgs.location)
                 } else {
                     functionResult = await functions[functionName](functionArgs.k);
                 }
