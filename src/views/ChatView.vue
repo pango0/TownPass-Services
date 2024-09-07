@@ -610,7 +610,7 @@ const sendMessage = async () => {
                     title: item.title,
                     latitude: item.latitude,
                     longitude: item.longitude,
-                })) : [];
+                })).filter(item => item.title) : [];
 
                 console.log(functionResult);
 
