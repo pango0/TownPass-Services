@@ -219,6 +219,9 @@ async function startRecording() {
             // Send the base64 audio to Google Cloud API
             const transcription = await transcribeAudio(base64Audio);
             userInput.value = transcription;
+            mediaRecorder.stop();
+            stopVoiceInput();
+            isRed.value = !isRed.value;
         };
 
         mediaRecorder.start();
