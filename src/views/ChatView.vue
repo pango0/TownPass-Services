@@ -114,7 +114,6 @@ import { getTransitRoute, type TransitRoute } from './route_planning';
 import { getCoordinatesByPlaceName } from './getCoordinates';
 import { query_db } from './db';
 import recorderIcon from '@/assets/images/recorder.svg';
-import { fetchParkingData } from './carParking';
 
 
 const userStore = useUserStore();
@@ -599,7 +598,7 @@ const functionDeclarations = [
     {
         name: 'findTrashCarLocation',
         description:
-            'Get the kth nearest trash car location that is available today, including location and arrive time',
+            '取離某地點最近的垃圾車站的資料。注意，你需要先透過getLocation得到某地點的座標或getPos來得到使用者座標',
         parameters: {
             type: 'object',
             properties: {
