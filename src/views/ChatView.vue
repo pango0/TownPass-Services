@@ -136,12 +136,13 @@ let userLongitude: number | null = null;
 
 const commonQueries = ref([
     '我附近有哪裡可以租YouBike？',
-    '我附近有哪裡可以還YouBike？',
     '離我最近的捷運站在哪裡？',
+    '新北投捷運站到公館捷運站要多久？',
     '台北市有哪些景點推薦？',
-    '今天天氣如何？',
+    '士林區天氣如何？',
     '離我最近的垃圾車地點在哪裡？',
-    '忘記台北通密碼怎麼辦？'
+    '木柵動物園到台灣大學路線',
+    '註冊時出現帳號已存在怎麼辦？'
 ]);
 const sendCommonQuery = (query: string) => {
     userInput.value = query;
