@@ -114,25 +114,14 @@ import { getTransitRoute, type TransitRoute } from './route_planning';
 import { getCoordinatesByPlaceName } from './getCoordinates';
 import { query_db } from './db';
 import recorderIcon from '@/assets/images/recorder.svg';
-// console.log(query_db("忘記密碼怎麼辦？"))
+import { fetchParkingData } from './carParking';
+
+
 const userStore = useUserStore();
 let userName = 'Guest';
 
 let userLatitude: number | null = null;
 let userLongitude: number | null = null;
-// async function hhh() {
-//     // Sample usage
-//     const metroNetwork: Line[] = await fetchMetroGraphData();
-//     const graph = buildGraph(metroNetwork);
-
-//     const startStationID = "R10";  // Example: Taipei Nangang Exhibition Center
-//     const endStationID = "G07";    // Example: Taipei Main Station
-
-//     const result = dijkstra(graph, startStationID, endStationID);
-//     console.log(`Shortest time: ${result.time} seconds`);
-//     console.log(`Path: ${result.path.join(" -> ")}`);
-// }
-// hhh()
 
 const commonQueries = ref([
     '我附近有哪裡可以租YouBike？',
@@ -142,8 +131,19 @@ const commonQueries = ref([
     '士林區天氣如何？',
     '離我最近的垃圾車地點在哪裡？',
     '木柵動物園到台灣大學路線',
-    '註冊時出現帳號已存在怎麼辦？'
+    '台北通註冊時出現帳號已存在怎麼辦？'
 ]);
+// shuffle the common queries
+function shuffleArray<T>(array: T[]): T[] {
+      for (let i = array.length - 1; i > 0; i--) {
+        const j = Math.floor(Math.random() * (i + 1));
+        [array[i], array[j]] = [array[j], array[i]]; // 交換元素
+      }
+      return array;
+    }
+
+commonQueries.value = shuffleArray([...commonQueries.value]);
+
 const sendCommonQuery = (query: string) => {
     userInput.value = query;
     sendMessage();
@@ -599,7 +599,7 @@ const functionDeclarations = [
     {
         name: 'findTrashCarLocation',
         description:
-            '取離某地點最近的垃圾車站的資料。注意，你需要先透過getLocation得到某地點的座標或getPos來得到使用者座標',
+            'Get the kth nearest trash car location that is available today, including location and arrive time',
         parameters: {
             type: 'object',
             properties: {
@@ -696,7 +696,7 @@ const functionDeclarations = [
     },
     {
         name: 'get_db',
-        description: '如果使用者問任何台北通相關的資訊，必須使用此工具獲得指示並整合指示後再回答',
+        description: '此工具可以獲取有關「台北通」的資訊，若使用此工具請整合答案後再回答',
         parameters: {
             type: 'object',
             properties: {
@@ -714,7 +714,6 @@ const functions = {
     findRentableStation,
     findReturnableStation,
     findNearestMetroStation,
-    // findDistance
     searchGoogle,
     getWeather,
     findTrashCarLocation,
@@ -734,7 +733,7 @@ const renderMarkdown = (text: string) => {
 
 const SYSTEM_PROMPT = `你是一位台北市的助理，你叫做「台北通智慧助理」. 你有以下服務：
 1999: 播打網路語音通話
-申辦服務: 線上申辦市政府服務個項目（市民）
+申辦服務: 線上申辦市政府服務個項目（市民）(網址:https://service.gov.taipei/)
 有話要說: 陳情系統
 臨櫃叫號: 臨櫃服務查看叫號、預約
 網路投票: 收集民意，促進民眾參與市政服務
@@ -753,9 +752,8 @@ const SYSTEM_PROMPT = `你是一位台北市的助理，你叫做「台北通智
 圖書借閱: 市立圖書館借閱服務
 愛遊動物園: 動物園區資訊導覽、線上地圖
 智慧客服: 台北通智慧客服機器人
-你需要透過function call獲取座標，使用者並不會提供座標
-請用繁體中文回答問題`;
 
+請用繁體中文回答問題`;
 const sendMessage = async () => {
     if (userInput.value.trim() === '') return;
     loading.value = true;
@@ -782,6 +780,7 @@ const sendMessage = async () => {
             messages: messages,
             functions: functionDeclarations, // Pass any function declarations
             function_call: 'auto', // Let the model decide when to call a function
+        
         };
 
         // Call OpenAI API
