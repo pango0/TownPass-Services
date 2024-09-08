@@ -45,22 +45,16 @@
                 </button>
             </div>
             <form class="flex items-center" @submit.prevent="sendMessage">
-                <button 
-                    @click="toggleVoiceInput" 
-                    :class="[
-                        'p-2 rounded-full focus:outline-none mr-2 flex items-center justify-center transition-colors',
-                        isRed ? 'bg-red-500' : 'bg-tiffany-blue hover:bg-tiffany-blue-dark'
-                    ]"
-                >
+                <button @click="toggleVoiceInput" :class="[
+                    'p-2 rounded-full focus:outline-none mr-2 flex items-center justify-center transition-colors',
+                    isRed ? 'bg-red-500' : 'bg-tiffany-blue hover:bg-tiffany-blue-dark'
+                ]">
                     <img :src="recorderIcon" alt="Recorder Icon" class="h-6 w-6 filter-white" />
                 </button>
 
-                <input 
-                    v-model="userInput" 
-                    :disabled="loading"
+                <input v-model="userInput" :disabled="loading"
                     :placeholder="isParsing ? '處理中...' : (isListening ? '聆聽中...' : '輸入你的問題')"
-                    class="flex-grow h-10 px-4 border border-tiffany-blue rounded-full focus:outline-none focus:ring-2 focus:ring-tiffany-blue"
-                />
+                    class="flex-grow h-10 px-4 border border-tiffany-blue rounded-full focus:outline-none focus:ring-2 focus:ring-tiffany-blue" />
                 <button @click="sendMessage" :disabled="loading"
                     class="ml-2 bg-tiffany-blue text-white h-10 w-10 rounded-full hover:bg-tiffany-blue-dark transition-colors flex items-center justify-center">
                     <template v-if="loading">
@@ -123,14 +117,16 @@ let userLatitude: number | null = null;
 let userLongitude: number | null = null;
 
 const commonQueries = ref([
+    '士林區下午天氣如何？',
+    '台北市有哪些景點推薦？',
     '我附近有哪裡可以租YouBike？',
     '離我最近的捷運站在哪裡？',
     '新北投捷運站到公館捷運站要多久？',
-    '台北市有哪些景點推薦？',
-    '士林區天氣如何？',
     '離我最近的垃圾車地點在哪裡？',
     '木柵動物園到台灣大學路線',
-    '台北通註冊時出現帳號已存在怎麼辦？'
+    '台北通註冊時出現帳號已存在怎麼辦？',
+    '我受委屈，我要陳情',
+    '解雞兔同籠問題：36隻腳、13個動物'
 ]);
 // shuffle the common queries
 function shuffleArray<T>(array: T[]): T[] {
@@ -206,11 +202,11 @@ const GOOGLE_API_KEY = import.meta.env.VITE_GoogleMap_API_KEY;
 async function log(data) {
     console.log(data);
     const response = await fetch("http://localhost:3000/log", {
-      method: "POST",
-      headers: {
-        'Content-Type': 'application/json',  // 設定請求頭，告訴伺服器我們發送的是 JSON
-    },
-      body: JSON.stringify({data: data})
+        method: "POST",
+        headers: {
+            'Content-Type': 'application/json',  // 設定請求頭，告訴伺服器我們發送的是 JSON
+        },
+        body: JSON.stringify({ data: data })
     });
 }
 async function startRecording() {
@@ -275,7 +271,7 @@ async function transcribeAudio(base64Audio: string): Promise<string> {
 
         const data = await response.json();
 
-        isParsing.value=false
+        isParsing.value = false
         if (response.ok && data.results) {
             return data.results[0]?.alternatives[0]?.transcript || 'Transcription failed.';
         } else {
@@ -493,7 +489,7 @@ const functionDeclarations = [
                     enum: ["大安區", "中正區", "北投區", "士林區", "內湖區", "中山區", "大同區", "松山區", "南港區", "萬華區", "信義區", "文山區"]
                 }
             },
-            required:['location']
+            required: ['location']
 
         }
     },
@@ -871,7 +867,7 @@ const sendMessage = async () => {
             if (result.choices[0].message.content != null) {
                 tmpChatHistory.push({ role: 'assistant', content: result.choices[0].message.content });
             }
-            tmpChatHistory.push({ role: 'assistant', content: '相關資訊：' + JSON.stringify(functionResult) });
+            tmpChatHistory.push({ role: 'assistant', content: JSON.stringify(functionResult) });
 
             response = await fetch('https://api.openai.com/v1/chat/completions', {
                 method: 'POST',
@@ -884,7 +880,7 @@ const sendMessage = async () => {
                     messages: [
                         { role: 'system', content: SYSTEM_PROMPT },
                         ...chatHistory.value.map(chat => ({
-                            role: chat.isUser ? 'user' : 'system',
+                            role: chat.isUser ? 'user' : 'assistant',
                             content: chat.content
                         })).slice(-5),
                         ...tmpChatHistory
@@ -907,7 +903,7 @@ const sendMessage = async () => {
         });
     } catch (error) {
         console.error('Error sending message:', error);
-        chatHistory.value.push({ id: Date.now(), isUser: false, content: '抱歉出事啦！', locations: [] });
+        chatHistory.value.push({ id: Date.now(), isUser: false, content: '這是個好問題，請再試一次！', locations: [] });
     } finally {
         loading.value = false;
         await nextTick();
