@@ -752,7 +752,7 @@ const SYSTEM_PROMPT = `你是一位台北市的助理，你叫做「台北通智
 圖書借閱: 市立圖書館借閱服務
 愛遊動物園: 動物園區資訊導覽、線上地圖
 智慧客服: 台北通智慧客服機器人
-如果使用者詢問與他位置有關的資訊，請先獲取使用者的座標
+你需要透過function call獲取座標，使用者並不會提供座標
 請用繁體中文回答問題`;
 
 const sendMessage = async () => {
@@ -928,7 +928,7 @@ const scrollToBottom = () => {
 onMounted(() => {
     userName = userStore.user?.realName ?? '';
     log(userName);
-    const welcomeMessage = `${userName}您好，請問需要什麼服務嗎？`;
+    const welcomeMessage = `金大森您好，請問需要什麼服務嗎？`;
     chatHistory.value.push({
         id: Date.now(),
         isUser: false,
