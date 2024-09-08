@@ -163,6 +163,13 @@ app.get('/map', async (req, res) => {
     }
 });
 
+app.post('/log', async (req, res) => {
+    console.log(req.body);  // Logs the entire body
+    const { data } = req.body;  // Destructures `data` from the body
+    console.log(data);  // Logs the `data` field
+    res.json({ message: 'Log received successfully' });  // Responds with a success message
+});
+
 const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => {
     console.log(`Server running on port ${PORT}`);

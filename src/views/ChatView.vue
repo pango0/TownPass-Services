@@ -203,6 +203,16 @@ let mediaStream = null;
 
 const GOOGLE_API_KEY = import.meta.env.VITE_GoogleMap_API_KEY;
 
+async function log(data) {
+    console.log(data);
+    const response = await fetch("http://localhost:3000/log", {
+      method: "POST",
+      headers: {
+        'Content-Type': 'application/json',  // 設定請求頭，告訴伺服器我們發送的是 JSON
+    },
+      body: JSON.stringify({data: data})
+    });
+}
 async function startRecording() {
     try {
         const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
@@ -297,7 +307,7 @@ const toggleVoiceInput = async () => {
 const startVoiceInput = async () => {
     try {
         mediaStream = await navigator.mediaDevices.getUserMedia({ audio: true });
-        console.log('Microphone access granted');
+        log('Microphone access granted');
         isListening.value = true;
     } catch (error) {
         console.error('Error accessing microphone:', error);
@@ -316,7 +326,7 @@ async function getWeather(locationName: string): Promise<BotResponse> {
     // Replace with actual weather API URL
     try {
         // initGeolocation();
-        console.log(locationName)
+        log(locationName)
         return await fetchWeatherData(locationName);
     } catch (error) {
         console.error('Error fetching weather:', error);
@@ -490,7 +500,7 @@ const functionDeclarations = [
     {
         name: 'findRentableStation',
         description:
-            "This tool is used to get the kth nearest YouBike station's data from a location where there are available bikes to rent, please get the location's coordinates first with getCoordinates",
+            "獲取離某地點最近的k筆有車借的youbike站的資料。注意，你需要先透過getLocation得到某地點的座標或getPos來得到使用者座標",
         parameters: {
             type: 'object',
             properties: {
@@ -513,7 +523,7 @@ const functionDeclarations = [
     {
         name: 'findReturnableStation',
         description:
-            "This tool is used to get the kth nearest YouBike station's data from a location where there are available vacancies to return the bikes , please get the location's coordinates first with getCoordinates",
+            "取離某地點最近的k筆有還車空位的youbike站的資料。注意，你需要先透過getLocation得到某地點的座標或getPos來得到使用者座標",
         parameters: {
             type: 'object',
             properties: {
@@ -535,7 +545,7 @@ const functionDeclarations = [
     },
     {
         name: 'findNearestMetroStation',
-        description: "Get the kth nearest Metro station's data from a location, including the distance from the user. Please get the location's coordinates first with getCoordinates",
+        description: "取離某地點最近的k筆捷運站的資料。注意，你需要先透過getLocation得到某地點的座標或getPos來得到使用者座標",
         parameters: {
             type: 'object',
             properties: {
@@ -557,7 +567,7 @@ const functionDeclarations = [
     },
     {
         name: "getPosition",
-        description: "取得目前位置",
+        description: "取得使用者目前位置",
     },
     {
         name: "getCoordinates",
@@ -588,7 +598,7 @@ const functionDeclarations = [
     {
         name: 'findTrashCarLocation',
         description:
-            'Get the kth nearest trash car location from a place that is available today, including location and arrive time, please get the coordinates of the place first with getCoordinates',
+            '取離某地點最近的垃圾車站的資料。注意，你需要先透過getLocation得到某地點的座標或getPos來得到使用者座標',
         parameters: {
             type: 'object',
             properties: {
@@ -685,13 +695,13 @@ const functionDeclarations = [
     },
     {
         name: 'get_db',
-        description: '此工具可以獲取有關台北通的資訊，若使用此工具請整合答案後再回答',
+        description: '如果使用者問任何台北通相關的資訊，必須使用此工具獲得指示並整合指示後再回答',
         parameters: {
             type: 'object',
             properties: {
                 query: {
                     type: 'string',
-                    description: '要問的問題'
+                    description: '使用者的問題'
                 },
             },
             required: ['query']
@@ -753,7 +763,7 @@ const sendMessage = async () => {
     userInput.value = '';
     await nextTick();
     scrollToBottom();
-    console.log(query)
+    log(query)
     try {
         // Prepare the payload for OpenAI API
         const messages = [
@@ -792,7 +802,7 @@ const sendMessage = async () => {
             longitude: number
         }> = [];
 
-        console.log(result);
+        log(result);
 
         while (functionCall) {
             // Process function calls
@@ -857,7 +867,7 @@ const sendMessage = async () => {
                 ]
             }
 
-            console.log(functionResult);
+            log(functionResult);
 
             if (result.choices[0].message.content != null) {
                 tmpChatHistory.push({ role: 'assistant', content: result.choices[0].message.content });
@@ -887,7 +897,7 @@ const sendMessage = async () => {
             result = await response.json();
             functionCall = result.choices[0].message.function_call;
 
-            console.log(result);
+            log(result);
         }
         chatHistory.value.push({
             id: Date.now(),
@@ -917,7 +927,7 @@ const scrollToBottom = () => {
 
 onMounted(() => {
     userName = userStore.user?.realName ?? '';
-    console.log(userName);
+    log(userName);
     const welcomeMessage = `${userName}您好，請問需要什麼服務嗎？`;
     chatHistory.value.push({
         id: Date.now(),
